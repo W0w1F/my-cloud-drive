@@ -1,0 +1,193 @@
+/* tokens.css — Huashu Design Tokens (oklch() color system)
+   Feature: 002-frontend-ux | Constitution: FR-015, FR-016
+   Accent: Rust Orange #C04A1A | Display: Source Serif 4 | Body: system stack */
+
+:root {
+  /* === Spacing Scale (enlarged) === */
+  --space-4: 6px;
+  --space-8: 12px;
+  --space-12: 16px;
+  --space-16: 22px;
+  --space-20: 28px;
+  --space-24: 34px;
+  --space-32: 44px;
+
+  /* === Accent Color (Constitution FR-015: single accent贯穿全场) === */
+  --color-accent: #C04A1A;
+  --color-accent-oklch: oklch(45% 0.18 40);
+
+  /* === Typography (enlarged) === */
+  --font-display: 'Source Serif 4', 'Noto Serif CJK SC', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 0.9375rem; /* 15px */
+  --font-size-md: 1.125rem;    /* 18px */
+  --font-size-lg: 1.25rem;     /* 20px */
+  --font-weight-normal: 400;
+  --font-weight-medium: 600;
+
+  /* === Border Radius (unified rounded) === */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* === Transitions === */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+
+  /* === Z-Index === */
+  --z-tree: 10;
+  --z-overlay: 100;
+  --z-snackbar: 200;
+}
+
+/* =========================================================================
+   LIGHT THEME (default)
+   ========================================================================= */
+:root,
+[data-theme="light"] {
+  --color-bg: oklch(96% 0 0);
+  --color-surface: oklch(100% 0 0);
+  --color-border: oklch(88% 0 0);
+  --color-text-primary: oklch(18% 0 0);
+  --color-text-secondary: oklch(45% 0 0);
+  --color-text-muted: oklch(65% 0 0);
+
+  /* Skeleton (Constitution FR-005: neutral gray rectangles) */
+  --color-skeleton: oklch(90% 0 0);
+  --color-skeleton-shimmer: oklch(95% 0 0);
+
+  /* Selection / hover */
+  --color-hover: oklch(45% 0.18 40 / 0.08);
+  --color-selected: oklch(45% 0.18 40 / 0.15);
+
+  /* Snackbar */
+  --color-snackbar-bg: oklch(25% 0 0);
+  --color-snackbar-text: oklch(95% 0 0);
+
+  /* Shadow (subtle, NO Material elevation) */
+  --shadow-card: 0 1px 3px oklch(0% 0 0 / 0.06);
+  --shadow-overlay: 0 4px 16px oklch(0% 0 0 / 0.12);
+}
+
+/* =========================================================================
+   DARK THEME (Constitution: FR-021 dual-theme support)
+   ========================================================================= */
+[data-theme="dark"] {
+  --color-bg: oklch(10% 0 0);
+  --color-surface: oklch(14% 0 0);
+  --color-border: oklch(24% 0 0);
+  --color-text-primary: oklch(92% 0 0);
+  --color-text-secondary: oklch(70% 0 0);
+  --color-text-muted: oklch(48% 0 0);
+
+  /* Skeleton — darker equivalent */
+  --color-skeleton: oklch(24% 0 0);
+  --color-skeleton-shimmer: oklch(28% 0 0);
+
+  /* Selection / hover — same accent, adjusted opacity for dark */
+  --color-hover: oklch(65% 0.15 40 / 0.12);
+  --color-selected: oklch(65% 0.15 40 / 0.2);
+
+  /* Snackbar */
+  --color-snackbar-bg: oklch(90% 0 0);
+  --color-snackbar-text: oklch(15% 0 0);
+
+  /* Shadow (darker, deeper) */
+  --shadow-card: 0 1px 3px oklch(0% 0 0 / 0.3);
+  --shadow-overlay: 0 4px 16px oklch(0% 0 0 / 0.5);
+}
+
+/* =========================================================================
+   GLOBAL RESETS
+   ========================================================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  transition: background-color var(--transition-base),
+              color var(--transition-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;  /* layout handles internal scrolling */
+}
+
+/* Display text uses serif (Constitution FR-016) */
+h1, h2, h3,
+.file-name,
+.tree-node-name {
+  font-family: var(--font-display);
+}
+
+a, button {
+  color: inherit;
+  cursor: pointer;
+}
+
+/* =========================================================================
+   SPLASH SCREEN — Huashu Design opening animation
+   Anti-slop: serif display, single accent, no gradients, no emoji
+   ========================================================================= */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: oklch(6% 0 0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-20);
+  animation: splashOut 200ms 1000ms forwards;
+}
+
+@keyframes splashOut {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+
+.splash-line {
+  width: 0;
+  height: 2px;
+  background: var(--color-accent);
+  animation: splashLine 400ms 100ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes splashLine {
+  from { width: 0; }
+  to   { width: 48px; }
+}
+
+.splash-title {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  font-weight: var(--font-weight-medium);
+  color: oklch(95% 0 0);
+  letter-spacing: 0.15em;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: splashReveal 400ms 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes splashReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.splash-sub {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: oklch(55% 0 0);
+  letter-spacing: 0.3em;
+  opacity: 0;
+  animation: splashReveal 350ms 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

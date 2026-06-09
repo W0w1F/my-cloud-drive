@@ -1,0 +1,19 @@
+git clone git://git.zx2c4.com/wireguard-tools
+cd wireguard-tools/contrib/extract-handshakes
+mkdir -p ../drivers/net
+cp -r /root/linux-6.8/drivers/net/wireguard ../drivers/net/
+make
+sed -i 's/index_hashtable_insert/wg_index_hashtable_insert/g' extract-handshakes.sh
+sudo killall extract-handshakes.sh
+sudo ./extract-handshakes.sh > wg.keys &
+sudo ip link set wg0 down && sudo ip link set wg0 up 
+ping -c 1 10.8.0.2
+
+sudo ./extract-handshakes.sh \
+    | stdbuf -oL tee -a /mnt/hgfs/security/wg.keys
+
+sudo ip link set wg0 down
+sudo ip link set wg0 up
+ping -c 1 10.8.0.2
+
+sudo wg-quick up wg0

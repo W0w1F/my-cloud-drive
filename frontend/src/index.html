@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">
+  <title>云盘文件管理系统</title>
+
+  <!-- CSS (order matters: tokens → layout → components → animations) -->
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/tree.css">
+  <link rel="stylesheet" href="css/grid.css">
+  <link rel="stylesheet" href="css/skeleton.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+  <!-- ======================================================================
+       Splash Screen — Huashu Design opening animation
+       ====================================================================== -->
+  <div id="splash">
+    <div class="splash-line"></div>
+    <h1 class="splash-title">云盘</h1>
+    <p class="splash-sub">目录树 · 去重存储</p>
+  </div>
+
+  <!-- ======================================================================
+       Header Bar
+       CSR: NO AI Slop — just logo text + theme toggle, no emoji, no gradient
+       ====================================================================== -->
+  <header id="header">
+    <span id="app-title">云盘</span>
+    <button id="theme-toggle" title="切换亮色/暗色模式" aria-label="切换主题">
+      <span class="theme-icon-light">☀</span>
+      <span class="theme-icon-dark">☾</span>
+    </button>
+  </header>
+
+  <!-- ======================================================================
+       Main Layout: Dual Pane (Constitution FR-001)
+       ====================================================================== -->
+  <main id="app">
+    <!-- Left: Directory Tree (260px fixed, Constitution FR-001) -->
+    <aside id="tree-panel">
+      <div id="tree-header">
+        <span id="tree-title">目录</span>
+      </div>
+      <nav id="directory-tree" role="tree">
+        <!-- Populated by tree.js -->
+      </nav>
+    </aside>
+
+    <!-- Right: File Grid (flex: 1, Constitution FR-001) -->
+    <section id="grid-panel">
+      <div id="grid-toolbar">
+        <input type="search" id="search-input" placeholder="搜索文件…" aria-label="搜索文件">
+        <select id="sort-select" aria-label="排序方式">
+          <option value="name-asc">名称 ↑</option>
+          <option value="name-desc">名称 ↓</option>
+          <option value="size-desc">大小 ↓</option>
+          <option value="size-asc">大小 ↑</option>
+          <option value="time-desc">时间 ↓</option>
+        </select>
+        <button id="btn-upload" aria-label="上传文件">上传</button>
+        <button id="btn-new-folder" aria-label="新建目录">新建目录</button>
+        <button id="btn-delete" aria-label="删除选中" disabled>删除</button>
+        <button id="btn-trash" aria-label="回收站">回收站</button>
+      </div>
+      <div id="path-bar" style="display:none;padding:6px 16px;background:var(--color-surface);border-bottom:1px solid var(--color-border);font-family:var(--font-body);font-size:13px;color:var(--color-text-secondary);"></div>
+      <div id="file-grid" role="list">
+        <!-- Populated by grid.js -->
+        <!-- Skeleton placeholder shown by skeleton.js during loading -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================================================================
+       Mobile: Hamburger Menu Overlay
+       ====================================================================== -->
+  <button id="hamburger" aria-label="打开目录菜单" hidden>☰</button>
+  <div id="overlay-backdrop" hidden></div>
+
+  <!-- ======================================================================
+       Hidden file input for upload
+       ====================================================================== -->
+  <input type="file" id="file-input" hidden multiple>
+
+  <!-- ======================================================================
+       Scripts (order matters: state → api → components → orchestrators)
+       ====================================================================== -->
+  <script src="js/api.js" defer></script>
+  <script src="js/state.js" defer></script>
+  <script src="js/theme.js" defer></script>
+  <script src="js/skeleton.js" defer></script>
+  <script src="js/animations.js" defer></script>
+  <script src="js/tree.js" defer></script>
+  <script src="js/grid.js" defer></script>
+  <script src="js/upload.js" defer></script>
+
+  <!-- Splash: click to skip -->
+  <script>
+    document.getElementById('splash').onclick = function() { this.remove(); };
+  </script>
+</body>
+</html>

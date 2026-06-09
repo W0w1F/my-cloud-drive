@@ -1,0 +1,110 @@
+/* animations.css — Orchestrated motion design (Constitution FR-009, FR-010)
+   Huashu Design: one well-orchestrated animation, not scattered micro-interactions */
+
+/* =========================================================================
+   Hero Reveal — instant upload success (Constitution FR-009)
+   400ms, expo-out, scale 0.8→1.0 + opacity 0.5→1.0
+   ========================================================================= */
+@keyframes hero-reveal {
+  0%   { transform: scale(0.8); opacity: 0.5; }
+  60%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.hero-reveal {
+  animation: hero-reveal 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* expo-out equivalent */
+}
+
+/* =========================================================================
+   Damped Slide-Out — file delete (Constitution FR-010)
+   150ms elastic offset → 200ms accelerate out + fade, 350ms total
+   ========================================================================= */
+@keyframes damped-slide-out {
+  0%   { transform: translateX(0); opacity: 1; }
+  40%  { transform: translateX(8px); opacity: 1; }        /* elastic nudge */
+  100% { transform: translateX(120%); opacity: 0; }       /* accelerate out */
+}
+
+.damped-slide-out {
+  animation: damped-slide-out 350ms ease-out forwards;
+  pointer-events: none;  /* prevent interaction during exit */
+}
+
+/* =========================================================================
+   Slide In Restore — undo delete (Constitution FR-012)
+   Reverse of slide-out
+   ========================================================================= */
+@keyframes slide-in-restore {
+  0%   { transform: translateX(120%); opacity: 0; }
+  60%  { transform: translateX(-4px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-restore {
+  animation: slide-in-restore 400ms ease-out forwards;
+}
+
+/* =========================================================================
+   Card Reflow — batch reposition after delete (Constitution FR-013)
+   ========================================================================= */
+.card-reflow {
+  transition: transform 250ms ease;
+}
+
+/* =========================================================================
+   Snackbar (Constitution FR-012)
+   ========================================================================= */
+#snackbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-snackbar);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-20);
+  background: var(--color-snackbar-bg);
+  color: var(--color-snackbar-text);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  box-shadow: var(--shadow-overlay);
+  opacity: 0;
+  transition: opacity 250ms ease;
+  pointer-events: none;
+}
+
+#snackbar.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#snackbar-message {
+  flex: 1;
+}
+
+#snackbar-undo {
+  padding: var(--space-4) var(--space-12);
+  border: 1px solid var(--color-snackbar-text);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-snackbar-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+#snackbar-undo:hover {
+  background: oklch(100% 0 0 / 0.15);
+}
+
+/* =========================================================================
+   DISABLED: Animation Slop (Constitution FR-009)
+   These classes exist only as documentation of what NOT to do
+   ========================================================================= */
+/* .hover-scale — NO hover zoom */
+/* .click-ripple — NO click ripple */
+/* .loading-spin — NO loading spinner */

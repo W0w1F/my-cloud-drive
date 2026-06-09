@@ -1,0 +1,183 @@
+/* grid.css — File Grid (Constitution FR-003)
+   High breathing space, CSS Grid auto-fill, NO card accent borders */
+
+#grid-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-bg);
+}
+
+/* Toolbar */
+#grid-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+#search-input {
+  flex: 1;
+  max-width: 360px;
+  height: 40px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+#search-input:focus {
+  border-color: var(--color-accent);
+}
+
+#btn-upload,
+#btn-new-folder,
+#btn-delete,
+#btn-trash,
+#btn-restore-all,
+#btn-clear-trash {
+  height: 40px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+#btn-upload:hover,
+#btn-new-folder:hover,
+#btn-delete:hover,
+#btn-trash:hover,
+#btn-restore-all:hover,
+#btn-clear-trash:hover {
+  background-color: var(--color-hover);
+}
+
+#btn-trash.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+#sort-select {
+  height: 40px;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  cursor: pointer;
+  outline: none;
+}
+
+/* File Grid */
+#file-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-16);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-16);
+  align-content: start;
+  /* content-visibility: auto handled in grid.js for virtual scrolling */
+}
+
+/* File Card — NO border accent, NO decoration, NO emoji per FR-003/FR-014 */
+.file-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  /* NO border-left, NO accent-color border, NO gradient */
+}
+
+.file-card:hover {
+  background-color: var(--color-hover);
+}
+
+.file-card.selected {
+  background-color: var(--color-selected);
+}
+
+/* Thumbnail area */
+.file-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--color-skeleton);  /* placeholder for non-image files */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Type label for non-image files (Constitution FR-014: NO SVG icons) */
+.file-type-label {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  padding: var(--space-8);
+}
+
+/* File info */
+.file-info {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.file-name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.file-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* Upload progress card (overlay on grid item) */
+.file-card.uploading .file-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.upload-progress {
+  width: 80%;
+  height: 4px;
+  accent-color: var(--color-accent);
+}

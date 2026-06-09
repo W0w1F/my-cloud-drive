@@ -1,0 +1,84 @@
+/* skeleton.css — High-fidelity skeleton screens (Constitution FR-004/FR-005)
+   Honest placeholders: NO fake text, NO fake icons, NO fake data */
+
+/* =========================================================================
+   Shimmer Animation
+   ========================================================================= */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-skeleton) 0%,
+    var(--color-skeleton-shimmer) 40%,
+    var(--color-skeleton) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* =========================================================================
+   Card Skeleton (matches .file-card layout)
+   ========================================================================= */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-12);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.skeleton-card .skeleton-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-card .skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-8);
+}
+
+.skeleton-card .skeleton-line.short {
+  width: 60%;
+}
+
+/* =========================================================================
+   Tree Node Skeleton
+   ========================================================================= */
+.skeleton-tree-row {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-12);
+  gap: var(--space-8);
+}
+
+.skeleton-tree-row .skeleton-indent {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.skeleton-tree-row .skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  flex: 1;
+  max-width: 140px;
+}
+
+/* =========================================================================
+   Skeleton transition: fade-in real content
+   ========================================================================= */
+.skeleton-fade-in {
+  animation: skeletonFadeIn 200ms ease forwards;
+}
+
+@keyframes skeletonFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

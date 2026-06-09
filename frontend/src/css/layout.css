@@ -1,0 +1,82 @@
+/* layout.css — Dual-pane layout (Constitution FR-001)
+   Header + main (tree-panel | grid-panel) */
+
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--space-16);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+#app-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+#theme-toggle {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  transition: background-color var(--transition-fast);
+}
+
+#theme-toggle:hover {
+  background-color: var(--color-hover);
+}
+
+.theme-icon-light,
+.theme-icon-dark {
+  line-height: 1;
+}
+
+#app {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* Hamburger — hidden on desktop */
+#hamburger {
+  display: none;
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: calc(var(--z-overlay) + 1);
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* Responsive breakpoints (Constitution FR-020) */
+@media (max-width: 767px) {
+  #hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #tree-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: var(--z-overlay);
+  }
+}

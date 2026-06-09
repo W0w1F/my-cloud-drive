@@ -1,0 +1,26 @@
+/* fonts.css — Self-hosted Source Serif 4 (SIL OFL)
+   Feature: 002-frontend-ux | Constitution: FR-016 (branded display font) */
+
+/* Source Serif 4 — Regular (400) */
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../assets/fonts/source-serif-4/SourceSerif4-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Source Serif 4 — SemiBold (600) for headings */
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('../assets/fonts/source-serif-4/SourceSerif4-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* System font stack for body text — NO Inter/Roboto/Arial per FR-016 */
+:root {
+  --font-display: 'Source Serif 4', 'Noto Serif CJK SC', 'Source Han Serif SC', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}

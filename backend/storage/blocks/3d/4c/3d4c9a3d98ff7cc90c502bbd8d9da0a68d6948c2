@@ -1,0 +1,6 @@
+### WindowsApi
+
+* GetVolumeInformation
+  * 获取卷信息（卷名、卷序列号、文件系统名称、文件系统标志、文件名的最大长度等）
+* GetDlgItemTextA
+  * 获取与对话框中的控件关联的标题或文本
