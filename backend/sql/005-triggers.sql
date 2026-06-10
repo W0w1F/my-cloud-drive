@@ -67,8 +67,8 @@ END //
 
 -- ============================================================================
 -- tg_after_node_physical_delete: AFTER DELETE ref_count maintenance
--- Constitution II: decrement ref_count when file node physically removed
--- Only fires when evt_clean_recycle_bin performs physical DELETE
+-- Constitution II: decrement ref_count when file node is permanently removed
+-- Only fires when trash cleanup performs physical DELETE
 -- ============================================================================
 CREATE TRIGGER tg_after_node_physical_delete
 AFTER DELETE ON file_nodes
@@ -77,7 +77,7 @@ BEGIN
     -- Only decrement ref_count for file-type nodes with a valid hash
     IF OLD.type = 'file' AND OLD.hash IS NOT NULL THEN
         UPDATE physical_blocks
-        SET ref_count = ref_count - 1
+        SET ref_count = IF(ref_count > 0, ref_count - 1, 0)
         WHERE sha1_hash = OLD.hash;
 
         -- Log the physical deletion

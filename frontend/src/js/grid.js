@@ -36,11 +36,8 @@
       return;
     }
     if (inTrash) return;
-
-    var pid = file.parent_id || null;
-    window.api.getFilePath(file.id).then(function(r) { showPathBar(r.path || '/'); }).catch(function(){});
-    window.appState.setCurrentDirectory(pid, true);
-    if (pid && window.selectTreeNode) window.selectTreeNode(pid);
+    // File: show preview
+    showPreview(file);
   });
 
   // ============================================================================
@@ -174,6 +171,39 @@
 
   // ============================================================================
   deleteBtn.style.display = 'none';
+
+  // ============================================================================
+  // Preview file — opens modal with content
+  // ============================================================================
+  async function showPreview(file) {
+    var modal = document.getElementById('preview-modal');
+    var title = document.getElementById('preview-title');
+    var body = document.getElementById('preview-body');
+    if (!modal || !body) return;
+
+    title.textContent = file.name;
+    body.innerHTML = '<div class="skeleton-shimmer" style="height:200px;border-radius:var(--radius-sm);"></div>';
+    modal.style.display = 'flex';
+
+    try {
+      var data = await window.api.previewFile(file.id);
+      if (data.type === 'text') {
+        body.innerHTML = '<pre style="font-family:monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">' + escapeHtml(data.content) + '</pre>';
+      } else if (data.type === 'image') {
+        body.innerHTML = '<img src="' + data.url + '" style="max-width:100%;max-height:60vh;border-radius:var(--radius-sm);" alt="' + escapeHtml(file.name) + '">';
+      } else {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-text-muted);"><p style="font-size:48px;margin-bottom:16px;">📄</p><p>' + escapeHtml(file.name) + '</p><p style="font-size:13px;margin-top:8px;">' + formatSize(file.size) + ' · ' + (data.ext || '').toUpperCase() + '</p><p style="margin-top:16px;font-size:13px;">不支持预览此文件类型</p></div>';
+      }
+    } catch (err) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-text-muted);"><p>预览失败</p><p style="font-size:13px;">' + escapeHtml(err.message) + '</p></div>';
+    }
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
 
   // ============================================================================
   // Download file
@@ -488,5 +518,12 @@
   // ============================================================================
   // Init
   // ============================================================================
-  document.addEventListener('DOMContentLoaded', () => loadDirectory(null));
+  document.addEventListener('DOMContentLoaded', () => {
+    loadDirectory(null);
+    // Preview modal close
+    var modal = document.getElementById('preview-modal');
+    var closeBtn = document.getElementById('preview-close');
+    if (closeBtn) closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+    if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+  });
 })();

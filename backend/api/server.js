@@ -34,6 +34,13 @@ const pool = mysql.createPool({
 app.use(cors());
 app.use(express.json());
 
+const CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;";
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', CSP_HEADER);
+  next();
+});
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'src')));
 
@@ -170,6 +177,40 @@ app.get('/api/v1/trash', async (req, res) => {
     res.json({ items: rows, total: rows.length });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/trash', message: err.message });
+    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+  }
+});
+
+// ============================================================================
+// 4a. GET /api/v1/files/:id/preview — File content preview
+// ============================================================================
+app.get('/api/v1/files/:id/preview', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT fn.name, fn.size, fn.type, pb.real_path
+       FROM file_nodes fn
+       JOIN physical_blocks pb ON fn.hash = pb.sha1_hash
+       WHERE fn.id = ? AND fn.type = 'file' AND fn.status = 'active'`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found' } });
+    const { name, size, real_path } = rows[0];
+    if (!fs.existsSync(real_path)) return res.status(500).json({ error: { code: 'BLOCK_MISSING', message: '文件数据不可用' } });
+
+    var ext = name.split('.').pop().toLowerCase();
+    var textExts = ['md','txt','json','js','css','html','xml','py','sql','sh','yml','yaml','c','cpp','h','java','ts','jsx','tsx','ini','cfg','log','csv'];
+    var imgExts = ['jpg','jpeg','png','gif','webp','svg','bmp'];
+
+    if (textExts.includes(ext) && size < 5 * 1024 * 1024) {
+      var content = fs.readFileSync(real_path, 'utf8');
+      res.json({ type: 'text', name: name, content: content, size: size });
+    } else if (imgExts.includes(ext)) {
+      res.json({ type: 'image', name: name, size: size, url: '/api/v1/files/' + req.params.id + '/download' });
+    } else {
+      res.json({ type: 'binary', name: name, size: size, ext: ext });
+    }
+  } catch (err) {
+    console.error('[API_ERROR]', { endpoint: '/files/preview', message: err.message });
     res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
   }
 });

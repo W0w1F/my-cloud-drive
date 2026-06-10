@@ -25,6 +25,17 @@
     <p class="splash-sub">目录树 · 去重存储</p>
   </div>
 
+  <!-- Preview Modal -->
+  <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:oklch(0% 0 0 / 0.6);align-items:center;justify-content:center;">
+    <div id="preview-box" style="background:var(--color-surface);border-radius:var(--radius-lg);max-width:90vw;max-height:85vh;width:800px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-overlay);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-12) var(--space-20);border-bottom:1px solid var(--color-border);">
+        <span id="preview-title" style="font-family:var(--font-display);font-size:var(--font-size-md);font-weight:var(--font-weight-medium);"></span>
+        <button id="preview-close" style="width:32px;height:32px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);cursor:pointer;font-size:18px;line-height:1;color:var(--color-text-secondary);">x</button>
+      </div>
+      <div id="preview-body" style="flex:1;overflow:auto;padding:var(--space-20);font-family:var(--font-body);font-size:var(--font-size-base);color:var(--color-text-primary);white-space:pre-wrap;word-break:break-word;max-height:70vh;"></div>
+    </div>
+  </div>
+
   <!-- ======================================================================
        Header Bar
        CSR: NO AI Slop — just logo text + theme toggle, no emoji, no gradient

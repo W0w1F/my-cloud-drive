@@ -156,6 +156,11 @@ const api = {
     return apiRequest(`/files/${nodeId}/path`);
   },
 
+  // Preview
+  previewFile(nodeId) {
+    return apiRequest(`/files/${nodeId}/preview`);
+  },
+
   // Move
   moveNode(nodeId, newParentId, operatorId) {
     return apiRequest(`/files/${nodeId}/move`, {

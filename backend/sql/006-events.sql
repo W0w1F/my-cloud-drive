@@ -17,9 +17,22 @@ ENABLE
 COMMENT 'Physically delete soft-deleted file_nodes older than 30 days'
 DO
 BEGIN
-    DELETE FROM file_nodes
-    WHERE status = 'deleted'
-      AND modified_at < NOW() - INTERVAL 30 DAY;
+    DECLARE v_batch_deleted INT DEFAULT 0;
+
+    delete_loop: LOOP
+        DELETE fn
+        FROM file_nodes fn
+        LEFT JOIN file_nodes child ON child.parent_id = fn.id
+        WHERE fn.status = 'deleted'
+          AND fn.modified_at < NOW() - INTERVAL 30 DAY
+          AND child.id IS NULL;
+
+        SET v_batch_deleted = ROW_COUNT();
+
+        IF v_batch_deleted = 0 THEN
+            LEAVE delete_loop;
+        END IF;
+    END LOOP;
 END //
 
 DELIMITER ;

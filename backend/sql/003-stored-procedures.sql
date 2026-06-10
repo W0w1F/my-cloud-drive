@@ -8,6 +8,7 @@ DROP PROCEDURE IF EXISTS sp_upload_file;
 DROP PROCEDURE IF EXISTS sp_soft_delete_node;
 DROP PROCEDURE IF EXISTS sp_restore_node;
 DROP PROCEDURE IF EXISTS sp_move_node;
+DROP PROCEDURE IF EXISTS sp_clear_trash;
 
 DELIMITER //
 
@@ -102,22 +103,8 @@ BEGIN
 
     START TRANSACTION;
 
-    -- Find all descendant nodes via recursive CTE (Constitution III)
-    -- Decrement ref_count for all file-type descendants before soft-deleting
-    UPDATE physical_blocks pb
-    JOIN (
-        WITH RECURSIVE descendants AS (
-            SELECT id, hash, type FROM file_nodes WHERE id = p_node_id
-            UNION ALL
-            SELECT fn.id, fn.hash, fn.type
-            FROM file_nodes fn
-            JOIN descendants d ON fn.parent_id = d.id
-        )
-        SELECT hash FROM descendants WHERE type = 'file' AND hash IS NOT NULL
-    ) AS df ON pb.sha1_hash = df.hash
-    SET pb.ref_count = pb.ref_count - 1;
-
     -- Soft-delete: UPDATE status (NOT physical DELETE — Constitution I)
+    -- Keep physical block ref_count unchanged while files remain restorable in trash.
     WITH RECURSIVE descendants AS (
         SELECT id FROM file_nodes WHERE id = p_node_id
         UNION ALL
@@ -171,22 +158,8 @@ BEGIN
     )
     SELECT COUNT(*) INTO v_done FROM descendants;
 
-    -- Increment ref_count for all file-type descendants being restored
-    UPDATE physical_blocks pb
-    JOIN (
-        WITH RECURSIVE descendants AS (
-            SELECT id, hash, type FROM file_nodes WHERE id = p_node_id AND status = 'deleted'
-            UNION ALL
-            SELECT fn.id, fn.hash, fn.type
-            FROM file_nodes fn
-            JOIN descendants d ON fn.parent_id = d.id
-            WHERE fn.status = 'deleted'
-        )
-        SELECT hash FROM descendants WHERE type = 'file' AND hash IS NOT NULL
-    ) AS df ON pb.sha1_hash = df.hash
-    SET pb.ref_count = pb.ref_count + 1;
-
     -- Restore all descendant nodes
+    -- ref_count is unchanged because soft-deleted nodes still own their blocks.
     WITH RECURSIVE descendants AS (
         SELECT id FROM file_nodes WHERE id = p_node_id AND status = 'deleted'
         UNION ALL
@@ -266,6 +239,41 @@ BEGIN
     SELECT p_node_id AS id, p_new_parent_id AS parent_id,
            IF(v_node_type = 'file', 'MOVE_FILE', 'MOVE_DIRECTORY') AS operation;
 
+END //
+
+-- ============================================================================
+-- sp_clear_trash: Permanently remove all deleted nodes for an owner
+-- Constitution I: Only hard-deletes nodes that are already soft-deleted.
+-- Deletes leaf nodes first to satisfy the self-referencing parent FK.
+-- ============================================================================
+CREATE PROCEDURE sp_clear_trash(
+    IN p_owner_id INT UNSIGNED
+)
+BEGIN
+    DECLARE v_batch_deleted INT DEFAULT 0;
+    DECLARE v_total_deleted INT DEFAULT 0;
+
+    START TRANSACTION;
+
+    delete_loop: LOOP
+        DELETE fn
+        FROM file_nodes fn
+        LEFT JOIN file_nodes child ON child.parent_id = fn.id
+        WHERE fn.owner_id = p_owner_id
+          AND fn.status = 'deleted'
+          AND child.id IS NULL;
+
+        SET v_batch_deleted = ROW_COUNT();
+        SET v_total_deleted = v_total_deleted + v_batch_deleted;
+
+        IF v_batch_deleted = 0 THEN
+            LEAVE delete_loop;
+        END IF;
+    END LOOP;
+
+    COMMIT;
+
+    SELECT v_total_deleted AS deleted_count;
 END //
 
 DELIMITER ;
