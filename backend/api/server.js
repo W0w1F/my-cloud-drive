@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 
@@ -60,10 +61,52 @@ const pool = mysql.createPool({
 });
 
 // ============================================================================
-// Middleware
+// CORS — strict origin validation with multi-origin support
 // ============================================================================
-app.use(cors({ origin: CONFIG.CORS_ORIGIN }));
+const ALLOWED_ORIGINS = CONFIG.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean);
+
+const corsOptions = {
+  origin: function(origin, cb) {
+    // Allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    if (ALLOWED_ORIGINS.length === 0) return cb(null, true);
+    cb(new Error(`CORS blocked: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// ============================================================================
+// Rate Limiting — protect against brute force and abuse
+// ============================================================================
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: '请求过于频繁，请稍后再试' } },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: '登录/注册请求过于频繁，请稍后再试' } },
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: '上传请求过于频繁，请稍后再试' } },
+});
 
 const CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;";
 
@@ -76,11 +119,11 @@ app.use((req, res, next) => {
 app.use(express.static(FRONTEND_DIR));
 
 // ============================================================================
-// Authentication Routes (before JWT middleware — public)
+// Authentication Routes (before JWT middleware — public, strict rate limit)
 // ============================================================================
 
 // POST /api/v1/auth/register — Create user account
-app.post('/api/v1/auth/register', async (req, res) => {
+app.post('/api/v1/auth/register', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -111,7 +154,7 @@ app.post('/api/v1/auth/register', async (req, res) => {
 });
 
 // POST /api/v1/auth/login — Authenticate and return JWT
-app.post('/api/v1/auth/login', async (req, res) => {
+app.post('/api/v1/auth/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -170,8 +213,8 @@ function authenticateToken(req, res, next) {
   }
 }
 
-// Apply auth middleware to all /api/v1 routes except /auth/*
-app.use('/api', (req, res, next) => {
+// Apply auth middleware + rate limiting to all /api/v1 routes except /auth/*
+app.use('/api', generalLimiter, (req, res, next) => {
   if (req.path.startsWith('/v1/auth')) return next();
   authenticateToken(req, res, next);
 });
@@ -239,7 +282,7 @@ app.get('/api/v1/files', async (req, res) => {
 // ============================================================================
 // 3. POST /api/v1/files/upload — File upload with dedup (Constitution II, VI)
 // ============================================================================
-app.post('/api/v1/files/upload', upload.single('file'), async (req, res) => {
+app.post('/api/v1/files/upload', uploadLimiter, upload.single('file'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { parent_id } = req.body;
