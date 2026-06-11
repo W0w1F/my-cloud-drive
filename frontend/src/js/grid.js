@@ -210,12 +210,32 @@
   // Download file
   // ============================================================================
   function downloadFile(file) {
-    const a = document.createElement('a');
-    a.href = window.API_BASE + '/files/' + file.id + '/download';
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // Fetch with JWT auth header, then trigger blob download
+    var token = window.Auth ? window.Auth.getToken() : null;
+    fetch(window.API_BASE + '/files/' + file.id + '/download', {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+    }).then(function(res) {
+      if (res.status === 401 || res.status === 403) {
+        if (window.Auth) window.Auth.clearSession();
+        window.location.href = '/login.html';
+        return;
+      }
+      if (!res.ok) throw new Error('下载失败 (HTTP ' + res.status + ')');
+      return res.blob();
+    }).then(function(blob) {
+      if (!blob) return;
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    }).catch(function(err) {
+      console.error('[DOWNLOAD_ERROR]', { fileId: file.id, error: err.message });
+      alert('下载失败：' + err.message);
+    });
   }
 
   // ============================================================================
