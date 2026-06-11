@@ -4,100 +4,171 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">
-  <title>登录 — 云盘文件管理系统</title>
+  <title>云盘 — 登录</title>
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/tokens.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
-      background: var(--color-bg, #f9f9f9);
+      background: var(--color-bg);
       font-family: var(--font-body);
-      color: var(--color-text-primary, #222);
+      color: var(--color-text-primary);
     }
+
+    /* Soft ambient glow */
+    .bg-glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    }
+    .bg-glow::before {
+      content: '';
+      position: absolute;
+      top: -20%; left: -10%;
+      width: 50%; height: 60%;
+      background: radial-gradient(ellipse, rgba(45,138,122,0.04) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .bg-glow::after {
+      content: '';
+      position: absolute;
+      bottom: -10%; right: -5%;
+      width: 45%; height: 50%;
+      background: radial-gradient(ellipse, rgba(232,135,91,0.03) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    /* Card */
     .login-container {
-      width: 100%;
-      max-width: 400px;
-      padding: 48px 40px;
-      background: var(--color-surface, #fff);
-      border: 1px solid var(--color-border, #e0e0e0);
-      border-radius: 16px;
+      position: relative; z-index: 1;
+      width: 100%; max-width: 420px;
+      padding: 48px 44px;
+      background: var(--color-surface-raised);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-raised);
+      animation: cardIn 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
     .login-title {
       font-family: var(--font-display);
-      font-size: 1.5rem;
+      font-size: var(--font-size-xl);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-primary);
+      letter-spacing: 0.04em;
       margin-bottom: 4px;
-      color: var(--color-accent, #C04A1A);
     }
+
     .login-sub {
       font-size: var(--font-size-sm);
-      color: var(--color-text-muted, #999);
+      color: var(--color-text-muted);
       margin-bottom: 32px;
     }
-    .form-group {
-      margin-bottom: 20px;
+
+    /* Accent divider */
+    .login-divider {
+      width: 32px; height: 2px;
+      background: var(--color-accent);
+      border-radius: 1px;
+      margin-bottom: 32px;
     }
+
+    /* Form */
+    .form-group { margin-bottom: 20px; }
+
     .form-group label {
       display: block;
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
       margin-bottom: 6px;
-      color: var(--color-text-secondary, #666);
+      color: var(--color-text-secondary);
+      letter-spacing: 0.04em;
     }
+
     .form-group input {
       width: 100%;
-      padding: 12px 14px;
-      border: 1px solid var(--color-border, #e0e0e0);
-      border-radius: 8px;
+      padding: 13px 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
       font-size: var(--font-size-base);
       font-family: var(--font-body);
-      background: var(--color-bg, #f9f9f9);
-      color: var(--color-text-primary, #222);
-    }
-    .form-group input:focus {
+      background: var(--color-bg);
+      color: var(--color-text-primary);
       outline: none;
-      border-color: var(--color-accent, #C04A1A);
+      transition: all var(--transition-spring);
     }
+
+    .form-group input::placeholder { color: var(--color-text-muted); }
+
+    .form-group input:focus {
+      border-color: var(--color-accent);
+      box-shadow: var(--shadow-glow);
+      background: var(--color-surface-solid);
+    }
+
+    /* Error */
     .login-error {
-      color: var(--color-accent, #C04A1A);
+      color: var(--color-warm);
       font-size: var(--font-size-sm);
-      margin-bottom: 16px;
-      display: none;
+      margin-bottom: 16px; display: none;
+      padding: 12px 16px;
+      border: 1px solid rgba(232,135,91,0.25);
+      border-radius: var(--radius-sm);
+      background: var(--color-warm-glow);
     }
     .login-error.visible { display: block; }
+
+    /* Submit */
     .btn-primary {
-      width: 100%;
-      padding: 12px;
-      background: var(--color-accent, #C04A1A);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
+      width: 100%; padding: 14px;
+      background: var(--color-accent);
+      color: #fff; border: none;
+      border-radius: var(--radius-sm);
       font-size: var(--font-size-base);
       font-family: var(--font-body);
+      font-weight: var(--font-weight-medium);
+      letter-spacing: 0.03em;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all var(--transition-spring);
+      margin-top: 8px;
     }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary:hover {
+      background: var(--color-accent-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(45,138,122,0.25);
+    }
+    .btn-primary:disabled {
+      opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none;
+    }
+
+    /* Toggle */
     .toggle-mode {
-      text-align: center;
-      margin-top: 20px;
+      text-align: center; margin-top: 24px;
       font-size: var(--font-size-sm);
-      color: var(--color-text-secondary, #666);
+      color: var(--color-text-muted);
     }
     .toggle-mode a {
-      color: var(--color-accent, #C04A1A);
-      cursor: pointer;
-      text-decoration: none;
+      color: var(--color-accent);
+      cursor: pointer; text-decoration: none;
+      font-weight: var(--font-weight-medium);
+      transition: color var(--transition-fast);
     }
+    .toggle-mode a:hover { color: var(--color-accent-light); }
   </style>
 </head>
 <body>
+  <div class="bg-glow"></div>
+
   <div class="login-container">
     <h1 class="login-title" id="mode-title">登录</h1>
-    <p class="login-sub" id="mode-sub">登录你的云盘账户</p>
+    <p class="login-sub" id="mode-sub">轻量云盘 · 去重存储</p>
+    <div class="login-divider"></div>
 
     <div class="login-error" id="login-error"></div>
 

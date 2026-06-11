@@ -20,14 +20,6 @@
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_KEY, theme);
-
-    // Update toggle button visibility
-    const lightIcon = document.querySelector('.theme-icon-light');
-    const darkIcon = document.querySelector('.theme-icon-dark');
-    if (lightIcon && darkIcon) {
-      lightIcon.style.display = theme === DARK ? 'inline' : 'none';
-      darkIcon.style.display = theme === DARK ? 'none' : 'inline';
-    }
   }
 
   function toggleTheme() {

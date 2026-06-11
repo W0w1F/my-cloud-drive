@@ -1,183 +1,366 @@
-/* grid.css — File Grid (Constitution FR-003)
-   High breathing space, CSS Grid auto-fill, NO card accent borders */
+/* grid.css — Glint File Grid
+   Floating cards, soft shadows, spring hover lifts, colored type badges,
+   glass-like surfaces, generous breathing room */
 
 #grid-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--color-bg);
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; background: var(--color-bg);
 }
 
-/* Toolbar */
+/* =========================================================================
+   TOOLBAR — Airy, pill-shaped inputs
+   ========================================================================= */
 #grid-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12) var(--space-16);
+  display: flex; align-items: center; gap: var(--space-8);
+  padding: var(--space-12) var(--space-20);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  flex-wrap: wrap;
 }
 
 #search-input {
-  flex: 1;
-  max-width: 360px;
-  height: 40px;
-  padding: 0 var(--space-12);
+  flex: 1; max-width: 320px; height: 40px;
+  padding: 0 var(--space-16);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-family: var(--font-body);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   color: var(--color-text-primary);
   background: var(--color-bg);
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-spring);
 }
-
+#search-input::placeholder { color: var(--color-text-muted); }
 #search-input:focus {
   border-color: var(--color-accent);
+  box-shadow: var(--shadow-glow);
+  background: var(--color-surface-solid);
 }
 
+/* Toolbar buttons — pill shaped */
 #btn-upload,
 #btn-new-folder,
 #btn-delete,
 #btn-trash,
 #btn-restore-all,
-#btn-clear-trash {
-  height: 40px;
-  padding: 0 var(--space-16);
+#btn-clear-trash,
+#sort-select {
+  height: 40px; padding: 0 var(--space-16);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
-  background: var(--color-surface);
+  background: var(--color-surface-solid);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
   white-space: nowrap;
+  transition: all var(--transition-spring);
 }
 
 #btn-upload:hover,
 #btn-new-folder:hover,
-#btn-delete:hover,
-#btn-trash:hover,
+#btn-delete:hover:not(:disabled),
 #btn-restore-all:hover,
 #btn-clear-trash:hover {
-  background-color: var(--color-hover);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-glow);
 }
 
-#btn-trash.active {
+#btn-upload {
   background: var(--color-accent);
   color: #fff;
   border-color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+}
+#btn-upload:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-light);
+  color: #fff;
+  transform: scale(1.03);
 }
 
-#sort-select {
-  height: 40px;
-  padding: 0 var(--space-12);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
+#btn-delete:disabled { opacity: 0.3; cursor: not-allowed; }
+
+#btn-trash.active {
+  background: var(--color-warm);
+  color: #fff;
+  border-color: var(--color-warm);
+}
+
+#sort-select { cursor: pointer; outline: none; }
+#sort-select:focus { border-color: var(--color-accent); }
+
+/* =========================================================================
+   BREADCRUMB
+   ========================================================================= */
+#path-bar {
+  display: none;
+  padding: 8px var(--space-20);
   background: var(--color-surface);
-  cursor: pointer;
-  outline: none;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
+#path-bar .breadcrumb-segment {
+  cursor: pointer; color: var(--color-accent);
+  transition: color var(--transition-fast);
+}
+#path-bar .breadcrumb-segment:hover { color: var(--color-accent-strong); }
 
-/* File Grid */
+/* =========================================================================
+   FILE GRID — Generous spacing, staggered entrance
+   ========================================================================= */
 #file-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-16);
+  flex: 1; overflow-y: auto;
+  padding: var(--space-20) var(--space-20);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-16);
   align-content: start;
-  /* content-visibility: auto handled in grid.js for virtual scrolling */
 }
 
-/* File Card — NO border accent, NO decoration, NO emoji per FR-003/FR-014 */
+/* =========================================================================
+   FILE CARD — The heart of the design
+   Floating white card, soft shadow, spring hover lift, colored top stripe
+   ========================================================================= */
 .file-card {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-12);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
-  /* NO border-left, NO accent-color border, NO gradient */
+  overflow: hidden;
+  transition: transform var(--transition-spring),
+              box-shadow var(--transition-spring),
+              border-color var(--transition-spring);
+  touch-action: manipulation;
+}
+
+/* Color stripe at top — file type indicator */
+.file-card::before {
+  content: '';
+  display: block;
+  width: 100%; height: 3px;
+  background: var(--color-accent);
+  border-radius: 3px 3px 0 0;
+  transition: height var(--transition-spring),
+              background var(--transition-fast);
+}
+
+/* Different colors for different file types via data attributes -
+   handled by JS setting a class or we vary by extension in future */
+.file-card[data-node-type="directory"]::before {
+  background: var(--color-accent-light);
 }
 
 .file-card:hover {
-  background-color: var(--color-hover);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-raised);
+  border-color: var(--color-border-strong);
+}
+
+.file-card:hover::before {
+  height: 4px;
 }
 
 .file-card.selected {
-  background-color: var(--color-selected);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-raised), var(--shadow-glow);
 }
 
-/* Thumbnail area */
+/* Deleted items — faded */
+.file-card[style*="opacity: 0.5"] {
+  opacity: 0.4;
+  filter: grayscale(0.4);
+}
+
+/* =========================================================================
+   THUMB AREA — Clean, centered type label
+   ========================================================================= */
 .file-thumb {
   width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  background: var(--color-skeleton);  /* placeholder for non-image files */
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  aspect-ratio: 16 / 10;
+  background: var(--color-bg);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
 }
 
-/* Type label for non-image files (Constitution FR-014: NO SVG icons) */
+/* File extension label — colorful pill */
 .file-type-label {
-  font-family: var(--font-display);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  padding: var(--space-8);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border: 1px solid rgba(45, 138, 122, 0.2);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-glow);
+  transition: all var(--transition-spring);
 }
 
-/* File info */
+.file-card:hover .file-type-label {
+  background: rgba(45, 138, 122, 0.12);
+  border-color: var(--color-accent);
+  transform: scale(1.05);
+}
+
+/* Directory badge — warm coral */
+.file-card[data-node-type="directory"] .file-type-label {
+  color: var(--color-warm);
+  border-color: rgba(232, 135, 91, 0.25);
+  background: var(--color-warm-glow);
+}
+
+.file-card[data-node-type="directory"]:hover .file-type-label {
+  background: rgba(232, 135, 91, 0.18);
+  border-color: var(--color-warm);
+  transform: scale(1.05);
+}
+
+/* =========================================================================
+   FILE INFO
+   ========================================================================= */
 .file-info {
-  margin-top: var(--space-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  padding: var(--space-12) var(--space-16) var(--space-16);
+  display: flex; flex-direction: column;
+  gap: 2px;
 }
 
 .file-name {
   font-family: var(--font-display);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.5;
+  transition: color var(--transition-fast);
+}
+
+.file-card:hover .file-name {
+  color: var(--color-accent-strong);
 }
 
 .file-meta {
-  display: flex;
-  justify-content: space-between;
+  display: flex; justify-content: space-between;
   font-family: var(--font-body);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
-/* Upload progress card (overlay on grid item) */
+/* =========================================================================
+   CARD BUTTONS
+   ========================================================================= */
+.card-btn {
+  margin: 0 var(--space-12) var(--space-12);
+  padding: 8px 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-spring);
+}
+
+.card-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-glow);
+}
+
+.card-btn-restore {
+  border-color: rgba(232, 135, 91, 0.2);
+  color: var(--color-warm);
+}
+
+.card-btn-restore:hover {
+  border-color: var(--color-warm);
+  background: var(--color-warm-glow);
+}
+
+/* =========================================================================
+   EMPTY STATE
+   ========================================================================= */
+#file-grid .empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 64px var(--space-20);
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+}
+
+/* =========================================================================
+   UPLOAD PROGRESS
+   ========================================================================= */
 .file-card.uploading .file-thumb {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   gap: var(--space-8);
+  color: var(--color-text-secondary);
 }
 
 .upload-progress {
-  width: 80%;
-  height: 4px;
+  width: 70%; height: 3px;
   accent-color: var(--color-accent);
+  border-radius: 2px;
+}
+.upload-progress::-webkit-progress-value { background: var(--color-accent); border-radius: 2px; }
+.upload-progress::-webkit-progress-bar { background: var(--color-bg); border-radius: 2px; }
+
+/* =========================================================================
+   PREVIEW MODAL — Frosted glass
+   ========================================================================= */
+#preview-modal {
+  background: rgba(0,0,0,0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+#preview-box {
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-overlay) !important;
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+}
+
+#preview-close {
+  width: 32px !important; height: 32px !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-full) !important;
+  background: var(--color-surface-solid) !important;
+  cursor: pointer !important;
+  font-size: 16px !important; line-height: 1 !important;
+  color: var(--color-text-secondary) !important;
+  transition: all var(--transition-spring) !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+}
+#preview-close:hover {
+  border-color: var(--color-warm) !important;
+  color: var(--color-warm) !important;
+}
+
+#preview-body {
+  color: var(--color-text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: var(--font-size-base) !important;
+}
+
+#preview-body pre {
+  background: var(--color-bg) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: var(--space-16) !important;
+  border: 1px solid var(--color-border) !important;
 }

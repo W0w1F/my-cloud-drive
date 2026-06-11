@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">
-  <title>云盘文件管理系统</title>
+  <title>云盘文件管理</title>
 
-  <!-- CSS (order matters: tokens → layout → components → animations) -->
   <link rel="stylesheet" href="css/fonts.css">
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -16,57 +15,48 @@
   <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
-  <!-- ======================================================================
-       Splash Screen — Huashu Design opening animation
-       ====================================================================== -->
+  <!-- Splash — light, clean entrance -->
   <div id="splash">
     <div class="splash-line"></div>
     <h1 class="splash-title">云盘</h1>
-    <p class="splash-sub">目录树 · 去重存储</p>
+    <p class="splash-sub">轻量·去重·快速</p>
   </div>
 
   <!-- Preview Modal -->
-  <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:oklch(0% 0 0 / 0.6);align-items:center;justify-content:center;">
-    <div id="preview-box" style="background:var(--color-surface);border-radius:var(--radius-lg);max-width:90vw;max-height:85vh;width:800px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-overlay);">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-12) var(--space-20);border-bottom:1px solid var(--color-border);">
-        <span id="preview-title" style="font-family:var(--font-display);font-size:var(--font-size-md);font-weight:var(--font-weight-medium);"></span>
-        <button id="preview-close" style="width:32px;height:32px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);cursor:pointer;font-size:18px;line-height:1;color:var(--color-text-secondary);">x</button>
+  <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;">
+    <div id="preview-box" style="background:var(--color-surface-solid);border-radius:var(--radius-lg);max-width:90vw;max-height:85vh;width:800px;display:flex;flex-direction:column;overflow:hidden;">
+      <div id="preview-header" style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-12) var(--space-20);border-bottom:1px solid var(--color-border);">
+        <span id="preview-title" style="font-family:var(--font-display);font-size:var(--font-size-md);font-weight:var(--font-weight-medium);color:var(--color-text-primary);"></span>
+        <button id="preview-close" aria-label="关闭预览">✕</button>
       </div>
-      <div id="preview-body" style="flex:1;overflow:auto;padding:var(--space-20);font-family:var(--font-body);font-size:var(--font-size-base);color:var(--color-text-primary);white-space:pre-wrap;word-break:break-word;max-height:70vh;"></div>
+      <div id="preview-body" style="flex:1;overflow:auto;padding:var(--space-20);max-height:70vh;"></div>
     </div>
   </div>
 
-  <!-- ======================================================================
-       Header Bar
-       CSR: NO AI Slop — just logo text + theme toggle, no emoji, no gradient
-       ====================================================================== -->
+  <!-- Header -->
   <header id="header">
     <span id="app-title">云盘</span>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span id="header-user" style="font-size:var(--font-size-sm);color:var(--color-text-secondary);"></span>
-      <button id="theme-toggle" title="切换亮色/暗色模式" aria-label="切换主题">
+    <div class="header-actions">
+      <span id="header-user"></span>
+      <button id="theme-toggle" title="切换主题" aria-label="切换主题">
         <span class="theme-icon-light">☀</span>
         <span class="theme-icon-dark">☾</span>
       </button>
-      <button id="btn-logout" title="退出登录" aria-label="退出登录" style="background:none;border:1px solid var(--color-border);border-radius:6px;padding:4px 10px;font-family:var(--font-body);font-size:12px;color:var(--color-text-secondary);cursor:pointer;">退出</button>
+      <button id="btn-logout" title="退出登录" aria-label="退出登录">退出</button>
     </div>
   </header>
 
-  <!-- ======================================================================
-       Main Layout: Dual Pane (Constitution FR-001)
-       ====================================================================== -->
+  <!-- Main Layout -->
   <main id="app">
-    <!-- Left: Directory Tree (260px fixed, Constitution FR-001) -->
+    <!-- Left: Directory Tree -->
     <aside id="tree-panel">
       <div id="tree-header">
         <span id="tree-title">目录</span>
       </div>
-      <nav id="directory-tree" role="tree">
-        <!-- Populated by tree.js -->
-      </nav>
+      <nav id="directory-tree" role="tree"></nav>
     </aside>
 
-    <!-- Right: File Grid (flex: 1, Constitution FR-001) -->
+    <!-- Right: File Grid -->
     <section id="grid-panel">
       <div id="grid-toolbar">
         <input type="search" id="search-input" placeholder="搜索文件…" aria-label="搜索文件">
@@ -82,28 +72,19 @@
         <button id="btn-delete" aria-label="删除选中" disabled>删除</button>
         <button id="btn-trash" aria-label="回收站">回收站</button>
       </div>
-      <div id="path-bar" style="display:none;padding:6px 16px;background:var(--color-surface);border-bottom:1px solid var(--color-border);font-family:var(--font-body);font-size:13px;color:var(--color-text-secondary);"></div>
-      <div id="file-grid" role="list">
-        <!-- Populated by grid.js -->
-        <!-- Skeleton placeholder shown by skeleton.js during loading -->
-      </div>
+      <div id="path-bar"></div>
+      <div id="file-grid" role="list"></div>
     </section>
   </main>
 
-  <!-- ======================================================================
-       Mobile: Hamburger Menu Overlay
-       ====================================================================== -->
+  <!-- Mobile -->
   <button id="hamburger" aria-label="打开目录菜单" hidden>☰</button>
   <div id="overlay-backdrop" hidden></div>
 
-  <!-- ======================================================================
-       Hidden file input for upload
-       ====================================================================== -->
+  <!-- Hidden file input -->
   <input type="file" id="file-input" hidden multiple>
 
-  <!-- ======================================================================
-       Scripts (order matters: state → auth → api → components → orchestrators)
-       ====================================================================== -->
+  <!-- Scripts -->
   <script src="js/state.js" defer></script>
   <script src="js/auth.js" defer></script>
   <script src="js/api.js" defer></script>
@@ -115,23 +96,18 @@
   <script src="js/grid.js" defer></script>
   <script src="js/upload.js" defer></script>
 
-  <!-- Auth guard + header setup -->
+  <!-- Auth guard -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       if (!window.Auth || !window.Auth.requireAuth()) return;
-
       var user = window.Auth.getUser();
-      if (user) {
-        document.getElementById('header-user').textContent = user.username;
-      }
-
+      if (user) document.getElementById('header-user').textContent = user.username;
       document.getElementById('btn-logout').addEventListener('click', function() {
         window.Auth.logout();
       });
     });
   </script>
 
-  <!-- Splash: click to skip -->
   <script>
     document.getElementById('splash').onclick = function() { this.remove(); };
   </script>

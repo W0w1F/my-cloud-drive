@@ -100,10 +100,10 @@
       });
       card.title = '双击恢复';
 
-      // Restore button visible on card
+      // Restore button on card
       const restoreBtn = document.createElement('button');
       restoreBtn.textContent = '恢复';
-      restoreBtn.style.cssText = 'margin-top:8px;padding:4px 12px;border:1px solid var(--color-accent);border-radius:var(--radius-sm);background:transparent;color:var(--color-accent);font-family:var(--font-body);font-size:12px;cursor:pointer;width:100%;';
+      restoreBtn.className = 'card-btn card-btn-restore';
       restoreBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         restoreFile(file, card);
@@ -115,9 +115,7 @@
     if (!file.status && file.type === 'file') {
       const dlBtn = document.createElement('button');
       dlBtn.textContent = '下载';
-      dlBtn.style.cssText = 'margin-top:6px;padding:4px 0;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:transparent;color:var(--color-text-secondary);font-family:var(--font-body);font-size:12px;cursor:pointer;width:100%;transition:all var(--transition-fast);';
-      dlBtn.addEventListener('mouseenter', function() { dlBtn.style.borderColor = 'var(--color-accent)'; dlBtn.style.color = 'var(--color-accent)'; });
-      dlBtn.addEventListener('mouseleave', function() { dlBtn.style.borderColor = 'var(--color-border)'; dlBtn.style.color = 'var(--color-text-secondary)'; });
+      dlBtn.className = 'card-btn';
       dlBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         downloadFile(file);
@@ -130,14 +128,16 @@
       card.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         var menu = document.createElement('div');
-        menu.style.cssText = 'position:fixed;z-index:9999;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:var(--shadow-overlay);padding:4px 0;min-width:120px;';
+        menu.className = 'context-menu';
+        menu.style.cssText = 'position:fixed;z-index:9999;padding:4px 0;min-width:120px;';
         menu.style.left = e.clientX + 'px';
         menu.style.top = e.clientY + 'px';
         var items = [{label:'下载', action:function(){downloadFile(file);}}, {label:'删除', action:function(){showDeleteConfirm(file);}}];
         items.forEach(function(item) {
           var mi = document.createElement('div');
           mi.textContent = item.label;
-          mi.style.cssText = 'padding:8px 16px;cursor:pointer;font-family:var(--font-body);font-size:var(--font-size-sm);color:var(--color-text-primary);';
+          mi.className = 'context-item';
+          mi.style.cssText = 'padding:8px 16px;cursor:pointer;font-size:var(--font-size-sm);';
           mi.addEventListener('mouseenter', function() { mi.style.background = 'var(--color-hover)'; });
           mi.addEventListener('mouseleave', function() { mi.style.background = ''; });
           mi.addEventListener('click', function() { item.action(); menu.remove(); });
@@ -454,15 +454,18 @@
 
     if (files.length === 0) {
       const msg = document.createElement('p');
-      msg.style.cssText = 'grid-column:1/-1;text-align:center;padding:48px;color:var(--color-text-muted);font-family:var(--font-display);';
+      msg.className = 'empty-state';
       msg.textContent = inTrash ? '回收站为空' : '此目录为空';
       gridContainer.appendChild(msg);
       // deleteBtn hidden
       return;
     }
 
-    files.forEach(function(file) {
-      gridContainer.appendChild(renderFileCard(file));
+    files.forEach(function(file, idx) {
+      const card = renderFileCard(file);
+      card.classList.add('card-enter');
+      card.style.setProperty('--card-index', idx);
+      gridContainer.appendChild(card);
     });
 
     if (files.length > 40) {
