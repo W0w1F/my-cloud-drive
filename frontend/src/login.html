@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">
+  <title>登录 — 云盘文件管理系统</title>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--color-bg, #f9f9f9);
+      font-family: var(--font-body);
+      color: var(--color-text-primary, #222);
+    }
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 48px 40px;
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border, #e0e0e0);
+      border-radius: 16px;
+    }
+    .login-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+      color: var(--color-accent, #C04A1A);
+    }
+    .login-sub {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted, #999);
+      margin-bottom: 32px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: var(--font-size-sm);
+      margin-bottom: 6px;
+      color: var(--color-text-secondary, #666);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--color-border, #e0e0e0);
+      border-radius: 8px;
+      font-size: var(--font-size-base);
+      font-family: var(--font-body);
+      background: var(--color-bg, #f9f9f9);
+      color: var(--color-text-primary, #222);
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--color-accent, #C04A1A);
+    }
+    .login-error {
+      color: var(--color-accent, #C04A1A);
+      font-size: var(--font-size-sm);
+      margin-bottom: 16px;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: var(--color-accent, #C04A1A);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: var(--font-size-base);
+      font-family: var(--font-body);
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toggle-mode {
+      text-align: center;
+      margin-top: 20px;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary, #666);
+    }
+    .toggle-mode a {
+      color: var(--color-accent, #C04A1A);
+      cursor: pointer;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1 class="login-title" id="mode-title">登录</h1>
+    <p class="login-sub" id="mode-sub">登录你的云盘账户</p>
+
+    <div class="login-error" id="login-error"></div>
+
+    <form id="auth-form">
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input type="text" id="username" autocomplete="username" required maxlength="64" placeholder="输入用户名">
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" autocomplete="current-password" required minlength="6" placeholder="输入密码">
+      </div>
+      <div class="form-group" id="confirm-group" style="display:none;">
+        <label for="confirm-password">确认密码</label>
+        <input type="password" id="confirm-password" autocomplete="new-password" minlength="6" placeholder="再次输入密码">
+      </div>
+      <button type="submit" class="btn-primary" id="submit-btn">登录</button>
+    </form>
+
+    <div class="toggle-mode">
+      <span id="toggle-text">没有账户？</span>
+      <a id="toggle-link">注册</a>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>

@@ -92,7 +92,7 @@
       li.setAttribute('aria-expanded', 'true');
 
       try {
-        const data = await window.api.getTree(node.id, window.appState.ownerId);
+        const data = await window.api.getTree(node.id);
         const children = data.nodes || [];
 
         // Insert children <li> after current node
@@ -131,7 +131,7 @@
     treeContainer.innerHTML = '';
 
     try {
-      const data = await window.api.getTree(null, window.appState.ownerId);
+      const data = await window.api.getTree(null);
       const nodes = data.nodes || [];
 
       const ul = document.createElement('ul');

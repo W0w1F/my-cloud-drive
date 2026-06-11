@@ -39,7 +39,6 @@
     const formData = new FormData();
     formData.append('file', file);
     formData.append('parent_id', window.appState.currentDirectoryId || '');
-    formData.append('owner_id', String(window.appState.ownerId));
 
     try {
       const xhr = new XMLHttpRequest();

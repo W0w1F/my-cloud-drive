@@ -235,12 +235,11 @@
   // ============================================================================
   async function restoreFile(file, card) {
     try {
-      await window.api.restoreNode(file.id, window.appState.operatorId);
+      await window.api.restoreNode(file.id);
       if (card) card.remove();
       var idx = currentFiles.indexOf(file);
       if (idx >= 0) currentFiles.splice(idx, 1);
       if (currentFiles.length === 0) renderGrid([]);
-      // Also refresh tree so restored files appear
       window.appState.refreshAll();
     } catch (err) {
       alert('恢复失败：' + err.message);
@@ -252,7 +251,7 @@
     var errors = 0;
     for (var i = currentFiles.length - 1; i >= 0; i--) {
       try {
-        await window.api.restoreNode(currentFiles[i].id, window.appState.operatorId);
+        await window.api.restoreNode(currentFiles[i].id);
         currentFiles.splice(i, 1);
       } catch (err) { errors++; }
     }
@@ -263,7 +262,7 @@
   async function clearTrash() {
     if (!confirm('确定永久删除回收站中所有文件？此操作不可恢复！')) return;
     try {
-      var result = await window.api.clearTrash(window.appState.ownerId);
+      var result = await window.api.clearTrash();
       currentFiles = [];
       renderGrid([]);
     } catch (err) {
@@ -307,7 +306,7 @@
       clearBtn.style.display = '';
       window.appState.emit('loading-started', { containerId: 'file-grid' });
       try {
-        const data = await window.api.getTrash(window.appState.ownerId);
+        const data = await window.api.getTrash();
         currentFiles = data.items || [];
         renderGrid(currentFiles);
         document.getElementById('tree-title').textContent = '回收站';
@@ -387,7 +386,7 @@
 
     try {
       console.log('[LOAD] fetching API /files?parent_id=' + dirId);
-      const data = await window.api.getFiles(dirId, window.appState.ownerId);
+      const data = await window.api.getFiles(dirId);
       console.log('[LOAD] API returned', data.total, 'items');
       currentFiles = data.items || [];
       window.appState.setFileCount(data.total || currentFiles.length);
@@ -482,7 +481,7 @@
       if (!query) { loadDirectory(window.appState.currentDirectoryId); return; }
       window.appState.emit('loading-started', { containerId: 'file-grid' });
       try {
-        const data = await window.api.searchFiles(query, window.appState.ownerId);
+        const data = await window.api.searchFiles(query);
         currentFiles = data.items || []; applySort(); renderGrid(currentFiles);
         window.appState.emit('loading-complete', { containerId: 'file-grid' });
       } catch (err) {
@@ -504,7 +503,7 @@
     const name = prompt('新建目录名称：');
     if (!name || !name.trim()) return;
     try {
-      await window.api.createDirectory(window.stripHTML(name.trim()), window.appState.currentDirectoryId, window.appState.ownerId);
+      await window.api.createDirectory(window.stripHTML(name.trim()), window.appState.currentDirectoryId);
       window.appState.refreshAll();
     } catch (err) { alert('创建失败：' + err.message); }
   });

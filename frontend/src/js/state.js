@@ -6,15 +6,12 @@ class AppState {
   constructor() {
     this._listeners = {};
     this._state = {
-      currentDirectoryId: null,   // currently viewed directory (null = root)
-      selectedNodeId: null,       // selected file/directory
-      ownerId: 1,                 // current user ID (hardcoded for v1; replace with auth)
-      operatorId: 1,              // for audit log (hardcoded for v1)
-      uploadQueue: [],            // pending uploads [{name, progress, status}]
-      fileCount: 0,               // total files in current directory
+      currentDirectoryId: null,
+      selectedNodeId: null,
+      uploadQueue: [],
+      fileCount: 0,
     };
 
-    // Bind event emitter methods
     this.on = this.on.bind(this);
     this.off = this.off.bind(this);
     this.emit = this.emit.bind(this);
@@ -47,8 +44,7 @@ class AppState {
   // =========================================================================
   get currentDirectoryId() { return this._state.currentDirectoryId; }
   get selectedNodeId() { return this._state.selectedNodeId; }
-  get ownerId() { return this._state.ownerId; }
-  get operatorId() { return this._state.operatorId; }
+  get operatorId() { return window.Auth ? window.Auth.getOperatorId() : null; }
   get uploadQueue() { return this._state.uploadQueue; }
 
   // =========================================================================

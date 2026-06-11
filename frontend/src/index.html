@@ -42,10 +42,14 @@
        ====================================================================== -->
   <header id="header">
     <span id="app-title">云盘</span>
-    <button id="theme-toggle" title="切换亮色/暗色模式" aria-label="切换主题">
-      <span class="theme-icon-light">☀</span>
-      <span class="theme-icon-dark">☾</span>
-    </button>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="header-user" style="font-size:var(--font-size-sm);color:var(--color-text-secondary);"></span>
+      <button id="theme-toggle" title="切换亮色/暗色模式" aria-label="切换主题">
+        <span class="theme-icon-light">☀</span>
+        <span class="theme-icon-dark">☾</span>
+      </button>
+      <button id="btn-logout" title="退出登录" aria-label="退出登录" style="background:none;border:1px solid var(--color-border);border-radius:6px;padding:4px 10px;font-family:var(--font-body);font-size:12px;color:var(--color-text-secondary);cursor:pointer;">退出</button>
+    </div>
   </header>
 
   <!-- ======================================================================
@@ -98,16 +102,33 @@
   <input type="file" id="file-input" hidden multiple>
 
   <!-- ======================================================================
-       Scripts (order matters: state → api → components → orchestrators)
+       Scripts (order matters: state → auth → api → components → orchestrators)
        ====================================================================== -->
-  <script src="js/api.js" defer></script>
   <script src="js/state.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/api.js" defer></script>
   <script src="js/theme.js" defer></script>
   <script src="js/skeleton.js" defer></script>
   <script src="js/animations.js" defer></script>
   <script src="js/tree.js" defer></script>
   <script src="js/grid.js" defer></script>
   <script src="js/upload.js" defer></script>
+
+  <!-- Auth guard + header setup -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!window.Auth || !window.Auth.requireAuth()) return;
+
+      var user = window.Auth.getUser();
+      if (user) {
+        document.getElementById('header-user').textContent = user.username;
+      }
+
+      document.getElementById('btn-logout').addEventListener('click', function() {
+        window.Auth.logout();
+      });
+    });
+  </script>
 
   <!-- Splash: click to skip -->
   <script>

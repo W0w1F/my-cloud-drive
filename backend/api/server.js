@@ -1,5 +1,7 @@
 // server.js — API Gateway: Frontend ↔ MySQL Stored Procedures
 // Constitution: IV (drive_app minimal privilege), VI (SP encapsulation)
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
+
 const express = require('express');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
@@ -7,31 +9,60 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
-const upload = multer({ dest: path.join(__dirname, '..', 'uploads'), limits: { fileSize: 10 * 1024 * 1024 * 1024 } }); // 10GB
+
+// ============================================================================
+// Configuration (from environment variables with secure defaults)
+// ============================================================================
+const CONFIG = {
+  DB_HOST: process.env.DB_HOST || 'localhost',
+  DB_USER: process.env.DB_USER || 'drive_app',
+  DB_PASSWORD: process.env.DB_PASSWORD || '',
+  DB_NAME: process.env.DB_NAME || 'cloud_drive',
+  DB_CONNECTION_LIMIT: parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10,
+  JWT_SECRET: process.env.JWT_SECRET || '',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  API_PORT: parseInt(process.env.API_PORT, 10) || 8081,
+  UPLOAD_MAX_SIZE: parseInt(process.env.UPLOAD_MAX_SIZE, 10) || 10 * 1024 * 1024 * 1024,
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:8081',
+};
+
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const STORAGE_DIR = path.join(__dirname, '..', 'storage', 'blocks');
+const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend', 'src');
+
+const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: CONFIG.UPLOAD_MAX_SIZE } });
 
 // Ensure directories exist
 [UPLOAD_DIR, STORAGE_DIR].forEach(dir => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); });
+
+if (!CONFIG.DB_PASSWORD) {
+  console.warn('[WARN] DB_PASSWORD is empty — database connection will fail. Set it in .env');
+}
+
+if (!CONFIG.JWT_SECRET) {
+  console.warn('[WARN] JWT_SECRET is empty — authentication will be insecure. Set it in .env');
+}
 
 // ============================================================================
 // MySQL Pool — drive_app (Constitution IV: Least Privilege)
 // ============================================================================
 const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'drive_app',
-  password: 'CHANGE_ME_APP_PASSWORD',
-  database: 'cloud_drive',
+  host: CONFIG.DB_HOST,
+  user: CONFIG.DB_USER,
+  password: CONFIG.DB_PASSWORD,
+  database: CONFIG.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: CONFIG.DB_CONNECTION_LIMIT,
 });
 
 // ============================================================================
 // Middleware
 // ============================================================================
-app.use(cors());
+app.use(cors({ origin: CONFIG.CORS_ORIGIN }));
 app.use(express.json());
 
 const CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;";
@@ -41,13 +72,108 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'src')));
+// Serve frontend static files (login page, CSS, JS — no auth needed for these)
+app.use(express.static(FRONTEND_DIR));
 
-// Extract operator_id from request or default to 1 (v1: hardcoded user)
-app.use((req, res, next) => {
-  req.operatorId = req.body?.operator_id || req.headers['x-operator-id'] || 1;
-  next();
+// ============================================================================
+// Authentication Routes (before JWT middleware — public)
+// ============================================================================
+
+// POST /api/v1/auth/register — Create user account
+app.post('/api/v1/auth/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: '需要用户名和密码' } });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: '密码长度至少 6 位' } });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    try {
+      const [result] = await pool.query(
+        'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+        [username.trim(), passwordHash]
+      );
+      res.status(201).json({ id: result.insertId, username: username.trim() });
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: { code: 'USER_EXISTS', message: '用户名已存在' } });
+      }
+      throw err;
+    }
+  } catch (err) {
+    console.error('[API_ERROR]', { endpoint: '/auth/register', status: 500, message: err.message });
+    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+  }
+});
+
+// POST /api/v1/auth/login — Authenticate and return JWT
+app.post('/api/v1/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: '需要用户名和密码' } });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, username, password_hash FROM users WHERE username = ?',
+      [username.trim()]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: { code: 'AUTH_FAILED', message: '用户名或密码错误' } });
+    }
+
+    const user = rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: { code: 'AUTH_FAILED', message: '用户名或密码错误' } });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      CONFIG.JWT_SECRET,
+      { expiresIn: CONFIG.JWT_EXPIRES_IN }
+    );
+
+    res.json({ token, user: { id: user.id, username: user.username } });
+  } catch (err) {
+    console.error('[API_ERROR]', { endpoint: '/auth/login', status: 500, message: err.message });
+    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+  }
+});
+
+// ============================================================================
+// JWT Authentication Middleware — applied to all /api/v1/* below
+// ============================================================================
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: '未提供认证令牌' } });
+  }
+
+  try {
+    const decoded = jwt.verify(token, CONFIG.JWT_SECRET);
+    req.operatorId = decoded.userId;
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: { code: 'TOKEN_EXPIRED', message: '令牌已过期，请重新登录' } });
+    }
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: '无效的认证令牌' } });
+  }
+}
+
+// Apply auth middleware to all /api/v1 routes except /auth/*
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/v1/auth')) return next();
+  authenticateToken(req, res, next);
 });
 
 // ============================================================================
@@ -55,7 +181,7 @@ app.use((req, res, next) => {
 // ============================================================================
 app.get('/api/v1/tree', async (req, res) => {
   try {
-    const { parent_id, owner_id } = req.query;
+    const { parent_id } = req.query;
     const [rows] = await pool.query(
       `SELECT fn.id, fn.name, fn.type, fn.size, fn.parent_id, fn.modified_at, fn.status,
               (SELECT COUNT(*) FROM file_nodes child WHERE child.parent_id = fn.id AND child.status = 'active') AS child_count,
@@ -65,7 +191,7 @@ app.get('/api/v1/tree', async (req, res) => {
          AND fn.owner_id = ?
          AND fn.status = 'active'
        ORDER BY fn.type ASC, fn.name ASC`,
-      parent_id ? [parent_id, owner_id || 1] : [owner_id || 1]
+      parent_id ? [parent_id, req.operatorId] : [req.operatorId]
     );
     res.json({ nodes: rows });
   } catch (err) {
@@ -79,8 +205,8 @@ app.get('/api/v1/tree', async (req, res) => {
 // ============================================================================
 app.get('/api/v1/files', async (req, res) => {
   try {
-    const { parent_id, owner_id, offset = 0, limit = 50 } = req.query;
-    const params = owner_id ? [owner_id] : [1];
+    const { parent_id, offset = 0, limit = 50 } = req.query;
+    const params = [req.operatorId];
 
     let whereClause = 'WHERE fn.status = \'active\' AND fn.owner_id = ?';
     if (parent_id) {
@@ -116,7 +242,7 @@ app.get('/api/v1/files', async (req, res) => {
 app.post('/api/v1/files/upload', upload.single('file'), async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { parent_id, owner_id } = req.body;
+    const { parent_id } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } });
 
@@ -144,15 +270,13 @@ app.post('/api/v1/files/upload', upload.single('file'), async (req, res) => {
     // Call stored procedure (Constitution VI)
     const [rows] = await conn.query(
       'CALL sp_upload_file(?, ?, ?, ?, ?, ?)',
-      [parseInt(owner_id) || 1, parent_id ? parseInt(parent_id) : null, originalName, fileSize, hash, realPath]
+      [req.operatorId, parent_id ? parseInt(parent_id) : null, originalName, fileSize, hash, realPath]
     );
 
-    // MySQL stored procedure returns multiple result sets; the first one has our data
     const result = rows[0]?.[0] || rows[0];
     res.json(result);
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/upload', status: 500, message: err.message });
-    // Cleanup temp file on error
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: { code: 'UPLOAD_FAILED', message: err.message } });
   } finally {
@@ -166,13 +290,12 @@ app.post('/api/v1/files/upload', upload.single('file'), async (req, res) => {
 // ============================================================================
 app.get('/api/v1/trash', async (req, res) => {
   try {
-    const { owner_id } = req.query;
     const [rows] = await pool.query(
       `SELECT id, name, type, size, modified_at, status
        FROM file_nodes
        WHERE owner_id = ? AND status = 'deleted'
        ORDER BY modified_at DESC`,
-      [owner_id || 1]
+      [req.operatorId]
     );
     res.json({ items: rows, total: rows.length });
   } catch (err) {
@@ -251,20 +374,20 @@ app.get('/api/v1/files/:id/download', async (req, res) => {
 // ============================================================================
 app.get('/api/v1/files/search', async (req, res) => {
   try {
-    const { q, owner_id } = req.query;
+    const { q } = req.query;
     if (!q) return res.json({ items: [], total: 0 });
 
     const keyword = `%${q.replace(/\*/g, '%')}%`;
     const [countRows] = await pool.query(
       `SELECT COUNT(*) AS total FROM file_nodes WHERE name LIKE ? AND owner_id = ? AND status = 'active'`,
-      [keyword, owner_id || 1]
+      [keyword, req.operatorId]
     );
 
     const [rows] = await pool.query(
       `SELECT id, name, type, size, hash, parent_id, modified_at, status FROM file_nodes
        WHERE name LIKE ? AND owner_id = ? AND status = 'active'
        ORDER BY type ASC, name ASC LIMIT 50`,
-      [keyword, owner_id || 1]
+      [keyword, req.operatorId]
     );
 
     res.json({ items: rows, total: countRows[0].total, offset: 0, limit: 50 });
@@ -327,19 +450,18 @@ app.post('/api/v1/files/:id/move', async (req, res) => {
 // ============================================================================
 app.post('/api/v1/directories', async (req, res) => {
   try {
-    const { name, parent_id, owner_id } = req.body;
+    const { name, parent_id } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: { code: 'INVALID_NAME', message: 'Directory name required' } });
 
-    // Check duplicate
     const [existing] = await pool.query(
       'SELECT id FROM file_nodes WHERE name = ? AND parent_id <=> ? AND owner_id = ? AND status = \'active\'',
-      [name.trim(), parent_id || null, owner_id || 1]
+      [name.trim(), parent_id || null, req.operatorId]
     );
     if (existing.length > 0) return res.status(409).json({ error: { code: 'DUPLICATE_NAME', message: '同名目录已存在' } });
 
     const [result] = await pool.query(
       'INSERT INTO file_nodes (name, type, size, hash, parent_id, owner_id) VALUES (?, \'directory\', 0, NULL, ?, ?)',
-      [name.trim(), parent_id || null, owner_id || 1]
+      [name.trim(), parent_id || null, req.operatorId]
     );
 
     res.json({ id: result.insertId, name: name.trim(), type: 'directory', size: 0, parent_id: parent_id || null, status: 'active' });
@@ -368,8 +490,7 @@ app.get('/api/v1/files/:id/path', async (req, res) => {
 app.delete('/api/v1/trash/clear', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { owner_id } = req.body;
-    const [rows] = await conn.query('CALL sp_clear_trash(?)', [owner_id || 1]);
+    const [rows] = await conn.query('CALL sp_clear_trash(?)', [req.operatorId]);
     res.json({ deleted_count: rows[0]?.[0]?.deleted_count || 0 });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/trash/clear', message: err.message });
@@ -385,6 +506,10 @@ app.patch('/api/v1/files/:id', async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: { code: 'INVALID_NAME', message: 'Name required' } });
+
+    // Verify ownership before renaming
+    const [owned] = await conn.query('SELECT id FROM file_nodes WHERE id = ? AND owner_id = ?', [parseInt(req.params.id), req.operatorId]);
+    if (owned.length === 0) return res.status(404).json({ error: { code: 'FILE_NOT_FOUND', message: 'Node not found' } });
 
     await conn.query('SET @current_operator_id = ?', [req.operatorId]);
     await conn.query('UPDATE file_nodes SET name = ?, modified_at = NOW() WHERE id = ?', [name.trim(), parseInt(req.params.id)]);
@@ -423,9 +548,9 @@ app.use('/api', (req, res) => {
 // ============================================================================
 // Start
 // ============================================================================
-const PORT = process.env.PORT || 8081;
+const PORT = CONFIG.API_PORT;
 app.listen(PORT, () => {
   console.log(`Cloud Drive API running on http://localhost:${PORT}`);
   console.log(`Frontend: http://localhost:${PORT}`);
-  console.log(`MySQL: drive_app@localhost/cloud_drive`);
+  console.log(`MySQL: ${CONFIG.DB_USER}@${CONFIG.DB_HOST}/${CONFIG.DB_NAME}`);
 });

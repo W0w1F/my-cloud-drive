@@ -1,4 +1,4 @@
-/* api.js — REST API client with error tracking
+/* api.js — REST API client with error tracking + JWT auth
    Feature: 002-frontend-ux
    Constitution: FR-008 (structured console.error), FR-022 (XSS sanitization) */
 
@@ -32,23 +32,41 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 
 // ============================================================================
-// API Client
+// API Client (with JWT Auth)
 // ============================================================================
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const token = window.Auth ? window.Auth.getToken() : null;
+
   const config = {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      ...options.headers
+    },
     ...options
   };
 
   try {
     const response = await fetch(url, config);
 
+    if (response.status === 401) {
+      console.error('[AUTH_ERROR]', { endpoint, status: 401 });
+      if (window.Auth) { window.Auth.clearSession(); }
+      window.location.href = '/login.html';
+      throw new Error('未授权，请重新登录');
+    }
+
+    if (response.status === 403) {
+      console.error('[AUTH_ERROR]', { endpoint, status: 403 });
+      window.location.href = '/login.html';
+      throw new Error('令牌无效，请重新登录');
+    }
+
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
       const errorMsg = errorBody.error?.message || `HTTP ${response.status}`;
 
-      // Structured error log (Constitution FR-008)
       console.error('[API_ERROR]', {
         endpoint: endpoint,
         status: response.status,
@@ -59,11 +77,9 @@ async function apiRequest(endpoint, options = {}) {
       throw new Error(errorMsg);
     }
 
-    // Blob URL cleanup: if this was a download, schedule revocation
     if (response.headers.get('Content-Type')?.includes('application/octet-stream')) {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      // Constitution FR-022: revoke Blob URL after 60s
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       return { blob, url, filename: response.headers.get('X-Filename') || 'download' };
     }
@@ -88,34 +104,36 @@ async function apiRequest(endpoint, options = {}) {
 // ============================================================================
 const api = {
   // Directory tree
-  getTree(parentId, ownerId) {
+  getTree(parentId) {
     const params = new URLSearchParams();
     if (parentId) params.set('parent_id', parentId);
-    if (ownerId) params.set('owner_id', ownerId);
     return apiRequest(`/tree?${params}`);
   },
 
   // File list (grid)
-  getFiles(parentId, ownerId, offset = 0, limit = 50) {
+  getFiles(parentId, offset = 0, limit = 50) {
     var params = new URLSearchParams({ offset, limit });
-    if (ownerId) params.set('owner_id', ownerId);
     if (parentId != null) params.set('parent_id', parentId);
     return apiRequest(`/files?${params}`);
   },
 
   // Search
-  searchFiles(query, ownerId) {
+  searchFiles(query) {
     const params = new URLSearchParams({ q: query });
-    if (ownerId) params.set('owner_id', ownerId);
     return apiRequest(`/files/search?${params}`);
   },
 
   // Upload (multipart — handled separately in upload.js)
   uploadFile(formData) {
+    const token = window.Auth ? window.Auth.getToken() : null;
     return fetch(`${API_BASE}/files/upload`, {
       method: 'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
       body: formData
-    }).then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error?.message); }));
+    }).then(r => {
+      if (r.status === 401) { if (window.Auth) window.Auth.clearSession(); window.location.href = '/login.html'; throw new Error('未授权'); }
+      return r.ok ? r.json() : r.json().then(e => { throw new Error(e.error?.message); });
+    });
   },
 
   // Download
@@ -124,31 +142,22 @@ const api = {
   },
 
   // Soft delete
-  deleteNode(nodeId, operatorId) {
-    return apiRequest(`/files/${nodeId}/delete`, {
-      method: 'POST',
-      body: JSON.stringify({ operator_id: operatorId })
-    });
+  deleteNode(nodeId) {
+    return apiRequest(`/files/${nodeId}/delete`, { method: 'POST' });
   },
 
   // Restore
-  restoreNode(nodeId, operatorId) {
-    return apiRequest(`/files/${nodeId}/restore`, {
-      method: 'POST',
-      body: JSON.stringify({ operator_id: operatorId })
-    });
+  restoreNode(nodeId) {
+    return apiRequest(`/files/${nodeId}/restore`, { method: 'POST' });
   },
 
   // Trash / recycle bin
-  getTrash(ownerId) {
-    return apiRequest(`/trash?owner_id=${ownerId || 1}`);
+  getTrash() {
+    return apiRequest('/trash');
   },
 
-  clearTrash(ownerId) {
-    return apiRequest('/trash/clear', {
-      method: 'DELETE',
-      body: JSON.stringify({ owner_id: ownerId || 1 })
-    });
+  clearTrash() {
+    return apiRequest('/trash/clear', { method: 'DELETE' });
   },
 
   // Full path
@@ -162,18 +171,18 @@ const api = {
   },
 
   // Move
-  moveNode(nodeId, newParentId, operatorId) {
+  moveNode(nodeId, newParentId) {
     return apiRequest(`/files/${nodeId}/move`, {
       method: 'POST',
-      body: JSON.stringify({ new_parent_id: newParentId, operator_id: operatorId })
+      body: JSON.stringify({ new_parent_id: newParentId })
     });
   },
 
   // Create directory
-  createDirectory(name, parentId, ownerId) {
+  createDirectory(name, parentId) {
     return apiRequest('/directories', {
       method: 'POST',
-      body: JSON.stringify({ name, parent_id: parentId, owner_id: ownerId })
+      body: JSON.stringify({ name, parent_id: parentId })
     });
   },
 

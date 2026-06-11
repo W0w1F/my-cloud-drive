@@ -4,6 +4,12 @@
 
 ## 功能
 
+### 认证
+- **注册** — 创建新账户（用户名 + 密码，bcrypt 加密）
+- **登录** — JWT 令牌认证，7 天有效期
+- **登出** — 清除本地令牌
+- **登录守卫** — 未登录自动跳转登录页，401 自动重定向
+
 ### 文件操作
 - **上传** — 拖拽或点击上传，自动 SHA-1 哈希去重
 - **下载** — 卡片底部下载按钮
@@ -34,6 +40,7 @@
 ┌─────────────────────────────────────────────┐
 │  frontend/src/         Vanilla HTML/CSS/JS   │
 │  ├── index.html        入口 (CSP 安全头)       │
+│  ├── login.html        登录/注册页面           │
 │  ├── css/              7 个样式文件             │
 │  │   ├── tokens.css    oklch() 设计令牌         │
 │  │   ├── layout.css    双栏布局                 │
@@ -41,8 +48,9 @@
 │  │   ├── grid.css      文件网格                 │
 │  │   ├── skeleton.css  骨架屏                   │
 │  │   └── animations.css  Hero Reveal + 滑出    │
-│  └── js/               8 个脚本文件             │
-│      ├── api.js        REST 客户端             │
+│  └── js/               9 个脚本文件             │
+│      ├── api.js        REST 客户端 (JWT)       │
+│      ├── auth.js       认证管理器              │
 │      ├── state.js      事件驱动状态机           │
 │      ├── tree.js       目录树组件              │
 │      ├── grid.js       文件网格组件            │
@@ -66,6 +74,22 @@
 ```
 
 ## 快速启动
+
+### 0. 环境配置
+
+```bash
+# 复制环境变量模板并填入实际值
+cp .env.example .env
+```
+
+编辑 `.env`，至少设置 `DB_PASSWORD`：
+
+```ini
+DB_HOST=localhost
+DB_USER=drive_app
+DB_PASSWORD=你的数据库密码
+DB_NAME=cloud_drive
+```
 
 ### 1. 数据库
 
