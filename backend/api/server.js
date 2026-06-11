@@ -21,10 +21,10 @@ const app = express();
 const CONFIG = {
   DB_HOST: process.env.DB_HOST || 'localhost',
   DB_USER: process.env.DB_USER || 'drive_app',
-  DB_PASSWORD: process.env.DB_PASSWORD || '',
+  DB_PASSWORD: process.env.DB_PASSWORD || 'CHANGE_ME_APP_PASSWORD',
   DB_NAME: process.env.DB_NAME || 'cloud_drive',
   DB_CONNECTION_LIMIT: parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10,
-  JWT_SECRET: process.env.JWT_SECRET || '',
+  JWT_SECRET: process.env.JWT_SECRET || 'CHANGE_ME_TO_A_RANDOM_SECRET_STRING',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   API_PORT: parseInt(process.env.API_PORT, 10) || 8081,
   UPLOAD_MAX_SIZE: parseInt(process.env.UPLOAD_MAX_SIZE, 10) || 10 * 1024 * 1024 * 1024,
