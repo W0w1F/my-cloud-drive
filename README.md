@@ -69,7 +69,8 @@
 │  ├── 005-triggers.sql  审计 + 引用计数          │
 │  ├── 006-events.sql    定时清理                │
 │  ├── 007-indexes.sql   复合索引                │
-│  └── 008-maintenance.sql 监控 + 备份           │
+│  ├── 008-maintenance.sql 监控 + 备份           │
+│  └── 009-fulltext.sql  全文索引 (FULLTEXT)      │
 └─────────────────────────────────────────────┘
 ```
 
@@ -102,6 +103,7 @@ mysql -u root -p cloud_drive < backend/sql/004-functions.sql
 mysql -u root -p cloud_drive < backend/sql/005-triggers.sql
 mysql -u root -p cloud_drive < backend/sql/006-events.sql
 mysql -u root -p cloud_drive < backend/sql/007-indexes.sql
+mysql -u root -p cloud_drive < backend/sql/009-fulltext.sql
 ```
 
 ### 2. API 网关

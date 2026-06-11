@@ -423,27 +423,45 @@ app.get('/api/v1/files/:id/download', async (req, res) => {
 });
 
 // ============================================================================
-// 5. GET /api/v1/files/search — Fuzzy search
+// 5. GET /api/v1/files/search — Full-text search (FULLTEXT with LIKE fallback)
 // ============================================================================
 app.get('/api/v1/files/search', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) return res.json({ items: [], total: 0 });
 
-    const keyword = `%${q.replace(/\*/g, '%')}%`;
-    const [countRows] = await pool.query(
-      `SELECT COUNT(*) AS total FROM file_nodes WHERE name LIKE ? AND owner_id = ? AND status = 'active'`,
-      [keyword, req.operatorId]
-    );
+    // FULLTEXT BOOLEAN MODE: add wildcard suffix to each word for prefix matching
+    const ftQuery = q.trim().split(/\s+/).map(w => '+' + w.replace(/[+\-<>()~*\"@]/g, '') + '*').join(' ');
 
-    const [rows] = await pool.query(
-      `SELECT id, name, type, size, hash, parent_id, modified_at, status FROM file_nodes
-       WHERE name LIKE ? AND owner_id = ? AND status = 'active'
-       ORDER BY type ASC, name ASC LIMIT 50`,
-      [keyword, req.operatorId]
-    );
+    let rows;
+    try {
+      [rows] = await pool.query(
+        `SELECT id, name, type, size, hash, parent_id, modified_at, status,
+                MATCH(name) AGAINST(? IN BOOLEAN MODE) AS relevance
+         FROM file_nodes
+         WHERE MATCH(name) AGAINST(? IN BOOLEAN MODE)
+           AND owner_id = ? AND status = 'active'
+         ORDER BY relevance DESC, type ASC, name ASC
+         LIMIT 50`,
+        [ftQuery, ftQuery, req.operatorId]
+      );
+    } catch (err) {
+      // FULLTEXT index may not exist — fall back to LIKE
+      rows = [];
+    }
 
-    res.json({ items: rows, total: countRows[0].total, offset: 0, limit: 50 });
+    // Fallback to LIKE if FULLTEXT returned no results or not available
+    if (rows.length === 0) {
+      const keyword = `%${q.replace(/\*/g, '%')}%`;
+      [rows] = await pool.query(
+        `SELECT id, name, type, size, hash, parent_id, modified_at, status FROM file_nodes
+         WHERE name LIKE ? AND owner_id = ? AND status = 'active'
+         ORDER BY type ASC, name ASC LIMIT 50`,
+        [keyword, req.operatorId]
+      );
+    }
+
+    res.json({ items: rows, total: rows.length, offset: 0, limit: 50 });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/search', status: 500, message: err.message });
     res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
