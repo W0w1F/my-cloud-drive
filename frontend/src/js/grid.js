@@ -267,18 +267,6 @@
   }
 
   // ============================================================================
-  // Path bar — shows file location when clicked (for file cards)
-  // ============================================================================
-  let pathTimer = null;
-  function showPathBar(fullPath) {
-    const bar = document.getElementById('path-bar');
-    if (!bar) return;
-    bar.style.display = '';
-    bar.textContent = '目录：' + fullPath;
-    clearTimeout(pathTimer);
-    pathTimer = setTimeout(function() { bar.style.display = 'none'; }, 3000);
-  }
-
   // ============================================================================
   // Restore helpers
   // ============================================================================

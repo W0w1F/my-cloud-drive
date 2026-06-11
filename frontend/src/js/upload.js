@@ -4,7 +4,7 @@
 (function() {
   'use strict';
 
-  const API_BASE = window.API_BASE || 'http://localhost:8081/api/v1';
+  const API_BASE = window.API_BASE || '/api/v1';
   const fileInput = document.getElementById('file-input');
 
   if (!fileInput) return;

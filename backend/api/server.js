@@ -213,9 +213,9 @@ function authenticateToken(req, res, next) {
   }
 }
 
-// Apply auth middleware + rate limiting to all /api/v1 routes except /auth/*
+// Apply auth middleware + rate limiting to all /api/v1 routes except /auth/* and /health
 app.use('/api', generalLimiter, (req, res, next) => {
-  if (req.path.startsWith('/v1/auth')) return next();
+  if (req.path.startsWith('/v1/auth') || req.path.startsWith('/v1/health')) return next();
   authenticateToken(req, res, next);
 });
 
@@ -412,8 +412,20 @@ app.get('/api/v1/files/:id/download', async (req, res) => {
       return res.status(500).json({ error: { code: 'BLOCK_MISSING', message: '文件数据不可用' } });
     }
 
+    const ext = path.extname(name).toLowerCase();
+    const mimeTypes = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.pdf': 'application/pdf', '.json': 'application/json',
+      '.txt': 'text/plain', '.html': 'text/html', '.css': 'text/css',
+      '.js': 'application/javascript', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4',
+      '.zip': 'application/zip', '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
     res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(name) + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
-    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', size);
     fs.createReadStream(real_path).pipe(res);
   } catch (err) {
@@ -611,6 +623,18 @@ app.get('/api/v1/thumb/:id', async (req, res) => {
 });
 
 // ============================================================================
+// ============================================================================
+// GET /api/v1/health — Health check (no auth required)
+// ============================================================================
+app.get('/api/v1/health', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT 1 AS db_ok');
+    res.json({ status: 'ok', db: 'connected', uptime: process.uptime() });
+  } catch (err) {
+    res.status(503).json({ status: 'degraded', db: 'disconnected', error: err.message });
+  }
+});
+
 // API 404 for unmatched /api/ routes
 app.use('/api', (req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint not found' } });
@@ -620,8 +644,30 @@ app.use('/api', (req, res) => {
 // Start
 // ============================================================================
 const PORT = CONFIG.API_PORT;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Cloud Drive API running on http://localhost:${PORT}`);
   console.log(`Frontend: http://localhost:${PORT}`);
   console.log(`MySQL: ${CONFIG.DB_USER}@${CONFIG.DB_HOST}/${CONFIG.DB_NAME}`);
 });
+
+// ============================================================================
+// Graceful Shutdown — close server and pool on SIGTERM/SIGINT
+// ============================================================================
+function gracefulShutdown(signal) {
+  console.log(`\n[SHUTDOWN] Received ${signal}, closing server...`);
+  server.close(async () => {
+    console.log('[SHUTDOWN] HTTP server closed');
+    try {
+      await pool.end();
+      console.log('[SHUTDOWN] MySQL pool closed');
+    } catch (e) {
+      console.error('[SHUTDOWN] Error closing pool:', e.message);
+    }
+    process.exit(0);
+  });
+  // Force exit after 10s
+  setTimeout(() => { console.error('[SHUTDOWN] Forced exit'); process.exit(1); }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -2,7 +2,7 @@
    Feature: 002-frontend-ux
    Constitution: FR-008 (structured console.error), FR-022 (XSS sanitization) */
 
-const API_BASE = 'http://localhost:8081/api/v1';
+const API_BASE = '/api/v1';
 
 // ============================================================================
 // XSS Sanitization (Constitution FR-022)

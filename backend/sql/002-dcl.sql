@@ -42,8 +42,8 @@ GRANT SELECT, INSERT, UPDATE
 GRANT SELECT, INSERT, UPDATE
     ON cloud_drive.physical_blocks TO 'drive_app'@'%';
 
--- Users table: read-only
-GRANT SELECT
+-- Users table: read + insert (registration)
+GRANT SELECT, INSERT
     ON cloud_drive.users TO 'drive_app'@'%';
 
 -- Audit logs: INSERT + SELECT only (Constitution V: append-only, immutable)
