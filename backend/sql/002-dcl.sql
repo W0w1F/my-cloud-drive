@@ -12,13 +12,13 @@ USE cloud_drive;
 -- Used ONLY for schema migrations, index creation, backups
 -- NEVER used by application code
 CREATE USER IF NOT EXISTS 'drive_admin'@'localhost'
-    IDENTIFIED BY 'CHANGE_ME_ADMIN_PASSWORD';
+    IDENTIFIED BY '123456';
 
 -- Application user: minimum privilege for business operations
 -- Constitution IV: SELECT, INSERT, UPDATE + EXECUTE only
 -- NO DELETE, NO DROP, NO ALTER, NO GRANT
 CREATE USER IF NOT EXISTS 'drive_app'@'%'
-    IDENTIFIED BY 'CHANGE_ME_APP_PASSWORD';
+    IDENTIFIED BY '123456';
 
 -- ============================================================================
 -- 2. Grant Privileges — drive_admin
