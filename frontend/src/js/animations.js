@@ -116,33 +116,32 @@
   }
 
   // ============================================================================
-  // Delete flow: animation → API call → Snackbar
+  // Delete flow: API call → animation → Snackbar
   // ============================================================================
   window.addEventListener('file-delete-triggered', async function(e) {
     const { nodeId, fileName } = e.detail;
 
-    // Find card in grid
     const card = document.querySelector(`.file-card[data-node-id="${nodeId}"]`);
     if (!card) return;
 
-    const gridContainer = document.getElementById('file-grid');
-
-    // Damped slide-out animation
-    await dampedSlideOut(card);
-
-    // Batch reflow remaining cards
-    batchReflow(gridContainer);
-
-    // API call (non-blocking for animation)
+    // Call API first — if it fails, don't remove the card
     try {
-      await window.api.deleteNode(nodeId, window.appState.operatorId);
-      // Refresh grid and tree after delete
-      window.appState.refreshAll();
+      await window.api.deleteNode(nodeId);
     } catch (err) {
       console.error('[DELETE_ERROR]', { nodeId, error: err.message });
+      showSnackbar('删除失败：' + err.message, 3000);
+      return;
     }
 
-    // Show Snackbar (Constitution: 「」 quotes — FR-017)
+    // API succeeded — now animate removal
+    const gridContainer = document.getElementById('file-grid');
+    await dampedSlideOut(card);
+    batchReflow(gridContainer);
+
+    // Refresh grid and tree
+    window.appState.refreshAll();
+
+    // Show Snackbar with undo (Constitution: 「」 quotes — FR-017)
     showSnackbar('已删除「' + window.stripHTML(fileName) + '」');
   });
 
@@ -159,7 +158,7 @@
     if (!lastDeletedNode) return;
 
     try {
-      const result = await window.api.restoreNode(lastDeletedNode.id, window.appState.operatorId);
+      await window.api.restoreNode(lastDeletedNode.id);
 
       // Re-render grid + tree to include restored file
       window.appState.refreshAll();

@@ -486,6 +486,15 @@ app.get('/api/v1/files/search', async (req, res) => {
 app.post('/api/v1/files/:id/delete', async (req, res) => {
   const conn = await pool.getConnection();
   try {
+    // Verify ownership — users can only delete their own files
+    const [owned] = await conn.query(
+      'SELECT id, type FROM file_nodes WHERE id = ? AND owner_id = ? AND status = ?',
+      [parseInt(req.params.id), req.operatorId, 'active']
+    );
+    if (owned.length === 0) {
+      return res.status(404).json({ error: { code: 'FILE_NOT_FOUND', message: '文件不存在或无权操作' } });
+    }
+
     await conn.query('SET @current_operator_id = ?', [req.operatorId]);
     const [rows] = await conn.query('CALL sp_soft_delete_node(?, ?)', [parseInt(req.params.id), req.operatorId]);
     res.json(rows[0]?.[0] || rows[0]);
