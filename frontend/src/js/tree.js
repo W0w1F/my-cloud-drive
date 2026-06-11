@@ -163,10 +163,63 @@
     }
   });
 
-  // Full refresh — reload entire tree (triggered after upload/delete/create/etc)
+  // Full refresh — reload only the root; expanded nodes will be re-expanded
+  // (Does NOT destroy entire tree — refreshes root children only)
   window.appState.on('refresh-all', function() {
-    loadRoot();
+    refreshRootChildren();
   });
+
+  // Incremental refresh — reload children of a specific expanded tree node
+  window.appState.on('tree-refresh-node', function(data) {
+    if (!data || !data.parentDirId) return;
+    const li = document.querySelector('.tree-node[data-node-id="' + data.parentDirId + '"]');
+    if (li && li.getAttribute('aria-expanded') === 'true') {
+      // Remove current children
+      let next = li.nextElementSibling;
+      while (next && parseInt(next.dataset.depth) > parseInt(li.dataset.depth)) {
+        const toRemove = next;
+        next = next.nextElementSibling;
+        toRemove.remove();
+      }
+      // Re-expand to lazy-load fresh children
+      li.setAttribute('aria-expanded', 'false');
+      const arrow = li.querySelector('.tree-arrow');
+      if (arrow) {
+        arrow.classList.remove('expanded');
+        arrow.textContent = '▶';
+      }
+      toggleExpand(li, { id: data.parentDirId });
+    }
+  });
+
+  // Refresh only root-level children (preserves expanded state of root nodes)
+  async function refreshRootChildren() {
+    try {
+      const data = await window.api.getTree(null);
+      const nodes = data.nodes || [];
+
+      // Remove existing root-level children
+      const ul = treeContainer.querySelector('ul[role="tree"]');
+      if (ul) ul.remove();
+
+      // Re-render root
+      const newUl = document.createElement('ul');
+      newUl.setAttribute('role', 'tree');
+      newUl.style.listStyle = 'none';
+      newUl.style.padding = '0';
+      newUl.style.margin = '0';
+
+      nodes.forEach(node => {
+        const li = renderNode(node, 0);
+        li.dataset.depth = '0';
+        newUl.appendChild(li);
+      });
+
+      treeContainer.appendChild(newUl);
+    } catch (err) {
+      // silent — tree stays as-is
+    }
+  }
 
   // Programmatically select and highlight a directory node in the tree
   window.selectTreeNode = async function(nodeId) {

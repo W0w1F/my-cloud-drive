@@ -16,6 +16,8 @@
   let currentFiles = [];
   let isLoading = false;
   let inTrash = false;
+  let abortController = null; // Request deduplication
+  let pathCache = {};         // nodeId → full path string
 
   // ============================================================================
   // Click delegation — single handler on grid container (always active)
@@ -217,7 +219,55 @@
   }
 
   // ============================================================================
-  // Path bar — shows file location when clicked
+  // Breadcrumb navigation — show current path, click to return to root
+  // ============================================================================
+  async function renderBreadcrumb(dirId) {
+    const bar = document.getElementById('path-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+
+    if (dirId == null) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = '';
+
+    let fullPath = pathCache[dirId];
+    if (!fullPath) {
+      try {
+        const r = await window.api.getFilePath(dirId);
+        fullPath = r.path || '/';
+        pathCache[dirId] = fullPath;
+      } catch (e) {
+        fullPath = '/';
+      }
+    }
+
+    const rootCrumb = document.createElement('span');
+    rootCrumb.textContent = '根目录';
+    rootCrumb.className = 'breadcrumb-segment';
+    rootCrumb.style.cssText = 'cursor:pointer;color:var(--color-accent);';
+    rootCrumb.title = '返回根目录';
+    rootCrumb.addEventListener('click', () => {
+      window.appState.setCurrentDirectory(null, true);
+    });
+    bar.appendChild(rootCrumb);
+
+    if (fullPath !== '/') {
+      const sep = document.createElement('span');
+      sep.textContent = ' › ';
+      sep.style.cssText = 'color:var(--color-text-muted);margin:0 4px;';
+      bar.appendChild(sep);
+
+      const pathCrumb = document.createElement('span');
+      pathCrumb.textContent = fullPath.replace(/^\//, '');
+      pathCrumb.style.cssText = 'font-weight:600;color:var(--color-text-primary);';
+      bar.appendChild(pathCrumb);
+    }
+  }
+
+  // ============================================================================
+  // Path bar — shows file location when clicked (for file cards)
   // ============================================================================
   let pathTimer = null;
   function showPathBar(fullPath) {
@@ -239,7 +289,8 @@
       const idx = currentFiles.indexOf(file);
       if (idx >= 0) currentFiles.splice(idx, 1);
       if (currentFiles.length === 0) renderGrid([]);
-      window.appState.refreshAll();
+      pathCache = {};
+      loadDirectory(window.appState.currentDirectoryId);
     } catch (err) {
       alert('恢复失败：' + err.message);
     }
@@ -377,16 +428,27 @@
     if (!force && (isLoading || inTrash)) {
       return;
     }
+    // Cancel previous in-flight request
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+
     isLoading = true;
+    renderBreadcrumb(dirId);
 
     window.appState.emit('loading-started', { containerId: 'file-grid' });
 
     try {
-      const data = await window.api.getFiles(dirId);
+      const data = await window.api.getFiles(dirId, abortController.signal);
       currentFiles = data.items || [];
       window.appState.setFileCount(data.total || currentFiles.length);
       applySort();
       renderGrid(currentFiles);
+      // Refresh this directory's tree children incrementally
+      if (dirId != null) {
+        window.appState.refreshTreeNode(dirId);
+      } else {
+        window.appState.emit('tree-refresh-node', { parentDirId: null });
+      }
       window.appState.emit('loading-complete', { containerId: 'file-grid', itemCount: currentFiles.length });
     } catch (err) {
       renderError();
@@ -479,7 +541,8 @@
     if (!name || !name.trim()) return;
     try {
       await window.api.createDirectory(window.stripHTML(name.trim()), window.appState.currentDirectoryId);
-      window.appState.refreshAll();
+      pathCache = {};
+      loadDirectory(window.appState.currentDirectoryId);
     } catch (err) { alert('创建失败：' + err.message); }
   });
 

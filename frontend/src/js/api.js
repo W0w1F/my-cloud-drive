@@ -111,10 +111,10 @@ const api = {
   },
 
   // File list (grid)
-  getFiles(parentId, offset = 0, limit = 50) {
-    var params = new URLSearchParams({ offset, limit });
+  getFiles(parentId, signal, offset = 0, limit = 50) {
+    const params = new URLSearchParams({ offset, limit });
     if (parentId != null) params.set('parent_id', parentId);
-    return apiRequest(`/files?${params}`);
+    return apiRequest(`/files?${params}`, signal ? { signal } : {});
   },
 
   // Search

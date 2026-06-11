@@ -89,9 +89,14 @@ class AppState {
     this._state.fileCount = count;
   }
 
-  // Trigger full refresh — tree re-loads, grid re-loads
+  // Trigger full refresh — grid re-loads, tree refreshes current branch
   refreshAll() {
     this.emit('refresh-all', { directoryId: this._state.currentDirectoryId });
+  }
+
+  // Notify tree to refresh children of a specific directory node
+  refreshTreeNode(parentDirId) {
+    this.emit('tree-refresh-node', { parentDirId });
   }
 }
 
