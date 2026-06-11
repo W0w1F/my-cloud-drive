@@ -138,7 +138,11 @@
     await dampedSlideOut(card);
     batchReflow(gridContainer);
 
-    // Force refresh: reload grid from server to update file count and tree
+    // Reload grid directly (bypass event system to avoid race conditions)
+    if (window.reloadCurrentGrid) {
+      setTimeout(() => window.reloadCurrentGrid(), 100);
+    }
+    // Also refresh tree
     window.appState.refreshAll();
 
     // Show Snackbar with undo

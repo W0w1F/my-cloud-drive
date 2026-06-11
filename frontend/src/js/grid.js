@@ -582,4 +582,12 @@
     if (closeBtn) closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
     if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
   });
+
+  // Expose direct reload for delete/restore flows (bypasses event system race conditions)
+  window.reloadCurrentGrid = function() {
+    if (!inTrash) {
+      isLoading = false;
+      loadDirectory(window.appState.currentDirectoryId, true);
+    }
+  };
 })();
