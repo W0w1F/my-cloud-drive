@@ -116,7 +116,7 @@
   }
 
   // ============================================================================
-  // Delete flow: API call → animation → Snackbar
+  // Delete flow: API call → remove from DOM → refresh
   // ============================================================================
   window.addEventListener('file-delete-triggered', async function(e) {
     const { nodeId, fileName } = e.detail;
@@ -133,15 +133,15 @@
       return;
     }
 
-    // API succeeded — now animate removal
+    // API succeeded — animate removal
     const gridContainer = document.getElementById('file-grid');
     await dampedSlideOut(card);
     batchReflow(gridContainer);
 
-    // Refresh grid and tree
+    // Force refresh: reload grid from server to update file count and tree
     window.appState.refreshAll();
 
-    // Show Snackbar with undo (Constitution: 「」 quotes — FR-017)
+    // Show Snackbar with undo
     showSnackbar('已删除「' + window.stripHTML(fileName) + '」');
   });
 

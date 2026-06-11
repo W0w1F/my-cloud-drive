@@ -569,7 +569,7 @@
     const cb = document.getElementById('btn-clear-trash'); if (cb) cb.style.display = 'none';
     loadDirectory(d.directoryId, true);
   });
-  window.appState.on('refresh-all', () => { if (!inTrash) loadDirectory(window.appState.currentDirectoryId); });
+  window.appState.on('refresh-all', () => { if (!inTrash) loadDirectory(window.appState.currentDirectoryId, true); });
 
   // ============================================================================
   // Init
