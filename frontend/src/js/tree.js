@@ -59,7 +59,7 @@
         }
       } else {
         // File node: click → navigate to parent directory
-        var pid = node.parent_id || null;
+        const pid = node.parent_id || null;
         navigateToDirectory(null, { id: pid });
       }
     });
@@ -172,7 +172,7 @@
   window.selectTreeNode = async function(nodeId) {
     if (!nodeId) return;
     // Try to find the node in current DOM
-    var li = document.querySelector('.tree-node[data-node-id="' + nodeId + '"]');
+    let li = document.querySelector('.tree-node[data-node-id="' + nodeId + '"]');
     if (!li) {
       // Need to expand ancestors first — reload tree from scratch
       // (simpler approach; could optimize with incremental load)
@@ -181,10 +181,10 @@
     }
     if (li) {
       // Expand ancestors so the node is visible
-      var parent = li.parentElement;
+      let parent = li.parentElement;
       while (parent && parent !== treeContainer) {
         if (parent.tagName === 'UL') {
-          var parentLi = parent.closest('.tree-node');
+          const parentLi = parent.closest('.tree-node');
           if (parentLi && parentLi.getAttribute('aria-expanded') === 'false') {
             parentLi.querySelector('.tree-arrow').click();
           }

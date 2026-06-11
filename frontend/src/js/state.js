@@ -51,9 +51,7 @@ class AppState {
   // Mutations (emit change events for reactive UI updates)
   // =========================================================================
   setCurrentDirectory(dirId, force) {
-    console.log('[STATE] setCurrentDirectory(', dirId, ', force=', force, ') current=', this._state.currentDirectoryId);
     if (!force && this._state.currentDirectoryId === dirId) {
-      console.log('[STATE] SKIPPED — same directory');
       return;
     }
     this._state.currentDirectoryId = dirId;

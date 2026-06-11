@@ -4,6 +4,7 @@
 (function() {
   'use strict';
 
+  const API_BASE = window.API_BASE || 'http://localhost:8081/api/v1';
   const fileInput = document.getElementById('file-input');
 
   if (!fileInput) return;
@@ -53,7 +54,9 @@
 
       // Completion
       const result = await new Promise(function(resolve, reject) {
-        xhr.open('POST', 'http://localhost:8081/api/v1/files/upload');
+        xhr.open('POST', API_BASE + '/files/upload');
+        const token = window.Auth ? window.Auth.getToken() : null;
+        if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.onload = function() {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve(JSON.parse(xhr.responseText));
@@ -151,17 +154,10 @@
 
     const meta = document.createElement('div');
     meta.className = 'file-meta';
-    meta.innerHTML = '<span>' + formatSize(fileData.size) + '</span><span>刚刚</span>';
+    meta.innerHTML = '<span>' + window.formatFileSize(fileData.size) + '</span><span>刚刚</span>';
     info.appendChild(meta);
     card.appendChild(info);
 
     return card;
-  }
-
-  function formatSize(bytes) {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
   }
 })();

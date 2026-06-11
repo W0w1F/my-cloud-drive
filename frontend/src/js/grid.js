@@ -20,15 +20,12 @@
   // ============================================================================
   // Click delegation — single handler on grid container (always active)
   // ============================================================================
-  console.log('[GRID] init delegation on', gridContainer);
   gridContainer.addEventListener('click', function(e) {
-    console.log('[GRID] delegation fired, target:', e.target.tagName, e.target.className);
-    var card = e.target.closest('.file-card');
-    if (!card) { console.log('[GRID] no .file-card ancestor'); return; }
-    var nodeId = parseInt(card.dataset.nodeId);
-    var file = currentFiles.find(function(f) { return f.id === nodeId; });
-    if (!file) { console.log('[GRID] file not found for id:', nodeId); return; }
-    console.log('[GRID] click file:', file.name, '| parent:', file.parent_id, '| type:', file.type);
+    const card = e.target.closest('.file-card');
+    if (!card) return;
+    const nodeId = parseInt(card.dataset.nodeId);
+    const file = currentFiles.find(function(f) { return f.id === nodeId; });
+    if (!file) return;
 
     if (file.type === 'directory' && !inTrash) {
       window.appState.setCurrentDirectory(file.id);
@@ -102,7 +99,7 @@
       card.title = '双击恢复';
 
       // Restore button visible on card
-      var restoreBtn = document.createElement('button');
+      const restoreBtn = document.createElement('button');
       restoreBtn.textContent = '恢复';
       restoreBtn.style.cssText = 'margin-top:8px;padding:4px 12px;border:1px solid var(--color-accent);border-radius:var(--radius-sm);background:transparent;color:var(--color-accent);font-family:var(--font-body);font-size:12px;cursor:pointer;width:100%;';
       restoreBtn.addEventListener('click', function(e) {
@@ -114,7 +111,7 @@
 
     // Download button on file cards (not in trash, file type only)
     if (!file.status && file.type === 'file') {
-      var dlBtn = document.createElement('button');
+      const dlBtn = document.createElement('button');
       dlBtn.textContent = '下载';
       dlBtn.style.cssText = 'margin-top:6px;padding:4px 0;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:transparent;color:var(--color-text-secondary);font-family:var(--font-body);font-size:12px;cursor:pointer;width:100%;transition:all var(--transition-fast);';
       dlBtn.addEventListener('mouseenter', function() { dlBtn.style.borderColor = 'var(--color-accent)'; dlBtn.style.color = 'var(--color-accent)'; });
@@ -145,7 +142,9 @@
           menu.appendChild(mi);
         });
         document.body.appendChild(menu);
-        setTimeout(function() { document.addEventListener('click', function rm() { menu.remove(); document.removeEventListener('click', rm); }); }, 0);
+        setTimeout(function() {
+          document.addEventListener('click', function rm() { menu.remove(); }, { once: true });
+        }, 0);
       });
       let pressTimer;
       card.addEventListener('touchstart', function() {
@@ -176,9 +175,9 @@
   // Preview file — opens modal with content
   // ============================================================================
   async function showPreview(file) {
-    var modal = document.getElementById('preview-modal');
-    var title = document.getElementById('preview-title');
-    var body = document.getElementById('preview-body');
+    const modal = document.getElementById('preview-modal');
+    const title = document.getElementById('preview-title');
+    const body = document.getElementById('preview-body');
     if (!modal || !body) return;
 
     title.textContent = file.name;
@@ -186,13 +185,13 @@
     modal.style.display = 'flex';
 
     try {
-      var data = await window.api.previewFile(file.id);
+      const data = await window.api.previewFile(file.id);
       if (data.type === 'text') {
         body.innerHTML = '<pre style="font-family:monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;margin:0;">' + escapeHtml(data.content) + '</pre>';
       } else if (data.type === 'image') {
         body.innerHTML = '<img src="' + data.url + '" style="max-width:100%;max-height:60vh;border-radius:var(--radius-sm);" alt="' + escapeHtml(file.name) + '">';
       } else {
-        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-text-muted);"><p style="font-size:48px;margin-bottom:16px;">📄</p><p>' + escapeHtml(file.name) + '</p><p style="font-size:13px;margin-top:8px;">' + formatSize(file.size) + ' · ' + (data.ext || '').toUpperCase() + '</p><p style="margin-top:16px;font-size:13px;">不支持预览此文件类型</p></div>';
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-text-muted);"><p style="font-size:48px;margin-bottom:16px;">📄</p><p>' + escapeHtml(file.name) + '</p><p style="font-size:13px;margin-top:8px;">' + formatFileSize(file.size) + ' · ' + (data.ext || '').toUpperCase() + '</p><p style="margin-top:16px;font-size:13px;">不支持预览此文件类型</p></div>';
       }
     } catch (err) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--color-text-muted);"><p>预览失败</p><p style="font-size:13px;">' + escapeHtml(err.message) + '</p></div>';
@@ -200,7 +199,7 @@
   }
 
   function escapeHtml(str) {
-    var div = document.createElement('div');
+    const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
@@ -209,8 +208,8 @@
   // Download file
   // ============================================================================
   function downloadFile(file) {
-    var a = document.createElement('a');
-    a.href = 'http://localhost:8081/api/v1/files/' + file.id + '/download';
+    const a = document.createElement('a');
+    a.href = window.API_BASE + '/files/' + file.id + '/download';
     a.download = file.name;
     document.body.appendChild(a);
     a.click();
@@ -220,9 +219,9 @@
   // ============================================================================
   // Path bar — shows file location when clicked
   // ============================================================================
-  var pathTimer = null;
+  let pathTimer = null;
   function showPathBar(fullPath) {
-    var bar = document.getElementById('path-bar');
+    const bar = document.getElementById('path-bar');
     if (!bar) return;
     bar.style.display = '';
     bar.textContent = '目录：' + fullPath;
@@ -237,7 +236,7 @@
     try {
       await window.api.restoreNode(file.id);
       if (card) card.remove();
-      var idx = currentFiles.indexOf(file);
+      const idx = currentFiles.indexOf(file);
       if (idx >= 0) currentFiles.splice(idx, 1);
       if (currentFiles.length === 0) renderGrid([]);
       window.appState.refreshAll();
@@ -248,8 +247,8 @@
 
   async function restoreAll() {
     if (!confirm('恢复回收站中所有文件？')) return;
-    var errors = 0;
-    for (var i = currentFiles.length - 1; i >= 0; i--) {
+    let errors = 0;
+    for (let i = currentFiles.length - 1; i >= 0; i--) {
       try {
         await window.api.restoreNode(currentFiles[i].id);
         currentFiles.splice(i, 1);
@@ -262,7 +261,7 @@
   async function clearTrash() {
     if (!confirm('确定永久删除回收站中所有文件？此操作不可恢复！')) return;
     try {
-      var result = await window.api.clearTrash();
+      const result = await window.api.clearTrash();
       currentFiles = [];
       renderGrid([]);
     } catch (err) {
@@ -285,7 +284,7 @@
       searchInput.disabled = true;
       searchInput.value = '';
       // Show restore-all button (styled like toolbar buttons)
-      var restoreAllBtn = document.getElementById('btn-restore-all');
+      let restoreAllBtn = document.getElementById('btn-restore-all');
       if (!restoreAllBtn) {
         restoreAllBtn = document.createElement('button');
         restoreAllBtn.id = 'btn-restore-all';
@@ -295,7 +294,7 @@
       }
       restoreAllBtn.style.display = '';
       // Show clear-trash button
-      var clearBtn = document.getElementById('btn-clear-trash');
+      let clearBtn = document.getElementById('btn-clear-trash');
       if (!clearBtn) {
         clearBtn = document.createElement('button');
         clearBtn.id = 'btn-clear-trash';
@@ -323,9 +322,9 @@
       newFolderBtn.style.display = '';
       uploadBtn.style.display = '';
       searchInput.disabled = false;
-      var rab = document.getElementById('btn-restore-all');
+      const rab = document.getElementById('btn-restore-all');
       if (rab) rab.style.display = 'none';
-      var cb = document.getElementById('btn-clear-trash');
+      const cb = document.getElementById('btn-clear-trash');
       if (cb) cb.style.display = 'none';
       document.getElementById('tree-title').textContent = '目录';
       loadDirectory(window.appState.currentDirectoryId);
@@ -375,9 +374,7 @@
   // Load directory contents
   // ============================================================================
   async function loadDirectory(dirId, force) {
-    console.log('[LOAD] loadDirectory(', dirId, ', force=', force, ') isLoading=', isLoading, ' inTrash=', inTrash);
     if (!force && (isLoading || inTrash)) {
-      console.log('[LOAD] SKIPPED — isLoading or inTrash');
       return;
     }
     isLoading = true;
@@ -385,9 +382,7 @@
     window.appState.emit('loading-started', { containerId: 'file-grid' });
 
     try {
-      console.log('[LOAD] fetching API /files?parent_id=' + dirId);
       const data = await window.api.getFiles(dirId);
-      console.log('[LOAD] API returned', data.total, 'items');
       currentFiles = data.items || [];
       window.appState.setFileCount(data.total || currentFiles.length);
       applySort();
@@ -450,26 +445,6 @@
   }
 
   // ============================================================================
-  // Utilities
-  // ============================================================================
-  function formatFileSize(bytes) {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-    return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
-  }
-
-  function formatRelativeTime(dateStr) {
-    if (!dateStr) return '';
-    const diffSec = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (diffSec < 60) return '刚刚';
-    if (diffSec < 3600) return Math.floor(diffSec / 60) + ' 分钟前';
-    if (diffSec < 86400) return Math.floor(diffSec / 3600) + ' 小时前';
-    if (diffSec < 2592000) return Math.floor(diffSec / 86400) + ' 天前';
-    return new Date(dateStr).toLocaleDateString('zh-CN');
-  }
-
-  // ============================================================================
   // Search
   // ============================================================================
   let searchTimeout;
@@ -511,7 +486,15 @@
   // ============================================================================
   // Events
   // ============================================================================
-  window.appState.on('directory-changed', (d) => { console.log('[EVENT] directory-changed:', d.directoryId); inTrash = false; trashBtn.textContent = '回收站'; trashBtn.classList.remove('active'); document.getElementById('tree-title').textContent = '目录'; deleteBtn.style.display = 'none'; sortSelect.style.display = ''; newFolderBtn.style.display = ''; uploadBtn.style.display = ''; searchInput.disabled = false; var rab = document.getElementById('btn-restore-all'); if (rab) rab.style.display = 'none'; var cb = document.getElementById('btn-clear-trash'); if (cb) cb.style.display = 'none'; loadDirectory(d.directoryId, true); });
+  window.appState.on('directory-changed', (d) => {
+    inTrash = false; trashBtn.textContent = '回收站'; trashBtn.classList.remove('active');
+    document.getElementById('tree-title').textContent = '目录';
+    deleteBtn.style.display = 'none'; sortSelect.style.display = ''; newFolderBtn.style.display = ''; uploadBtn.style.display = '';
+    searchInput.disabled = false;
+    const rab = document.getElementById('btn-restore-all'); if (rab) rab.style.display = 'none';
+    const cb = document.getElementById('btn-clear-trash'); if (cb) cb.style.display = 'none';
+    loadDirectory(d.directoryId, true);
+  });
   window.appState.on('refresh-all', () => { if (!inTrash) loadDirectory(window.appState.currentDirectoryId); });
 
   // ============================================================================
@@ -520,8 +503,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     loadDirectory(null);
     // Preview modal close
-    var modal = document.getElementById('preview-modal');
-    var closeBtn = document.getElementById('preview-close');
+    const modal = document.getElementById('preview-modal');
+    const closeBtn = document.getElementById('preview-close');
     if (closeBtn) closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
     if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
   });

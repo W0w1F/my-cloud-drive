@@ -198,3 +198,4 @@ const api = {
 // Expose for use by other modules (no bundler — global namespace)
 window.api = api;
 window.stripHTML = stripHTML;
+window.API_BASE = API_BASE;
