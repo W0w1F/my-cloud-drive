@@ -264,7 +264,7 @@ app.get('/api/v1/files', async (req, res) => {
 
     const [rows] = await pool.query(
       `SELECT fn.id, fn.name, fn.type, fn.size, fn.hash, fn.parent_id, fn.modified_at, fn.status,
-              CASE WHEN fn.type = 'file' AND fn.hash IN (SELECT sha1_hash FROM physical_blocks WHERE real_path LIKE '%.jpg' OR real_path LIKE '%.png' OR real_path LIKE '%.gif' OR real_path LIKE '%.webp')
+              CASE WHEN fn.type = 'file' AND LOWER(SUBSTRING_INDEX(fn.name, '.', -1)) IN ('jpg','jpeg','png','gif','webp','svg','bmp')
                    THEN CONCAT('/api/v1/thumb/', fn.id) ELSE NULL END AS thumbnail_url
        FROM file_nodes fn ${whereClause}
        ORDER BY fn.type ASC, fn.name ASC
@@ -289,26 +289,36 @@ app.post('/api/v1/files/upload', uploadLimiter, upload.single('file'), async (re
     const file = req.file;
     if (!file) return res.status(400).json({ error: { code: 'NO_FILE', message: 'No file uploaded' } });
 
-    // Fix Chinese filename encoding from multer
     var originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
-    // Compute SHA-1 hash (Constitution II)
-    const fileBuffer = fs.readFileSync(file.path);
-    const hash = crypto.createHash('sha1').update(fileBuffer).digest('hex');
-    const fileSize = fileBuffer.length;
+    // Validate filename — reject empty, path traversal, or overly long names
+    if (!originalName || originalName.length > 255) {
+      fs.unlinkSync(file.path);
+      return res.status(400).json({ error: { code: 'INVALID_NAME', message: '文件名无效或过长' } });
+    }
+
+    // Compute SHA-1 hash via streaming (never loads file into memory)
+    const fileSize = file.size;
+    const hash = await new Promise((resolve, reject) => {
+      const hasher = crypto.createHash('sha1');
+      const readStream = fs.createReadStream(file.path);
+      readStream.on('error', reject);
+      hasher.on('error', reject);
+      readStream.pipe(hasher);
+      readStream.on('end', () => resolve(hasher.digest('hex')));
+    });
 
     // Store physically under hash-based path
     const hashDir = path.join(STORAGE_DIR, hash.substring(0, 2), hash.substring(2, 4));
     fs.mkdirSync(hashDir, { recursive: true });
     const realPath = path.join(hashDir, hash);
 
-    // Only write if not already exists (dedup)
+    // Dedup check: move if new, delete temp if duplicate
     if (!fs.existsSync(realPath)) {
-      fs.writeFileSync(realPath, fileBuffer);
+      fs.renameSync(file.path, realPath);
+    } else {
+      fs.unlinkSync(file.path);
     }
-
-    // Clean up temp upload
-    fs.unlinkSync(file.path);
 
     // Call stored procedure (Constitution VI)
     const [rows] = await conn.query(
