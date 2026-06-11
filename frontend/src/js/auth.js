@@ -30,6 +30,18 @@
     localStorage.removeItem(USER_KEY);
   }
 
+  function isTokenValid() {
+    const token = getToken();
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      return payload.exp > now;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ============================================================================
   // API Calls
   // ============================================================================
@@ -67,8 +79,8 @@
   // ============================================================================
 
   function requireAuth() {
-    const token = getToken();
-    if (!token) {
+    if (!isTokenValid()) {
+      clearSession();
       window.location.href = '/login.html';
       return false;
     }
@@ -162,8 +174,8 @@
       }
     });
 
-    // If already logged in, redirect to main
-    if (getToken()) {
+    // If already have a valid token, redirect to main
+    if (isTokenValid()) {
       window.location.href = '/';
     }
   }
@@ -175,6 +187,7 @@
   window.Auth = {
     getToken,
     getUser,
+    isTokenValid,
     login,
     register,
     logout,
