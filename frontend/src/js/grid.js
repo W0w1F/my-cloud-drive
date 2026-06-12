@@ -112,7 +112,7 @@
     }
 
     // Download button on file cards (not in trash, file type only)
-    if (!file.status && file.type === 'file') {
+    if (file.status !== 'deleted' && file.type === 'file') {
       const dlBtn = document.createElement('button');
       dlBtn.textContent = '下载';
       dlBtn.className = 'card-btn';

@@ -79,7 +79,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // ============================================================================
 // Rate Limiting — protect against brute force and abuse
@@ -149,7 +149,7 @@ app.post('/api/v1/auth/register', authLimiter, async (req, res) => {
     }
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/auth/register', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -185,7 +185,7 @@ app.post('/api/v1/auth/login', authLimiter, async (req, res) => {
     res.json({ token, user: { id: user.id, username: user.username } });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/auth/login', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -239,7 +239,7 @@ app.get('/api/v1/tree', async (req, res) => {
     res.json({ nodes: rows });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/tree', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -275,7 +275,7 @@ app.get('/api/v1/files', async (req, res) => {
     res.json({ items: rows, total, offset: parseInt(offset), limit: parseInt(limit) });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -353,7 +353,7 @@ app.get('/api/v1/trash', async (req, res) => {
     res.json({ items: rows, total: rows.length });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/trash', message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -387,7 +387,7 @@ app.get('/api/v1/files/:id/preview', async (req, res) => {
     }
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/preview', message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -430,7 +430,7 @@ app.get('/api/v1/files/:id/download', async (req, res) => {
     fs.createReadStream(real_path).pipe(res);
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/download', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -476,7 +476,7 @@ app.get('/api/v1/files/search', async (req, res) => {
     res.json({ items: rows, total: rows.length, offset: 0, limit: 50 });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/search', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -500,7 +500,7 @@ app.post('/api/v1/files/:id/delete', async (req, res) => {
     res.json(rows[0]?.[0] || rows[0]);
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/delete', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   } finally { conn.release(); }
 });
 
@@ -510,12 +510,20 @@ app.post('/api/v1/files/:id/delete', async (req, res) => {
 app.post('/api/v1/files/:id/restore', async (req, res) => {
   const conn = await pool.getConnection();
   try {
+    const [owned] = await conn.query(
+      'SELECT id FROM file_nodes WHERE id = ? AND owner_id = ? AND status = ?',
+      [parseInt(req.params.id), req.operatorId, 'deleted']
+    );
+    if (owned.length === 0) {
+      return res.status(404).json({ error: { code: 'FILE_NOT_FOUND', message: '文件不存在或无权操作' } });
+    }
+
     await conn.query('SET @current_operator_id = ?', [req.operatorId]);
     const [rows] = await conn.query('CALL sp_restore_node(?, ?)', [parseInt(req.params.id), req.operatorId]);
     res.json(rows[0]?.[0] || rows[0]);
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/restore', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   } finally { conn.release(); }
 });
 
@@ -533,7 +541,8 @@ app.post('/api/v1/files/:id/move', async (req, res) => {
     const code = err.message.includes('CYCLE_DETECTED') ? 'CYCLE_DETECTED' : 'INTERNAL';
     const status = code === 'CYCLE_DETECTED' ? 400 : 500;
     console.error('[API_ERROR]', { endpoint: '/files/move', status, message: err.message });
-    res.status(status).json({ error: { code, message: err.message } });
+    const msg = code === 'CYCLE_DETECTED' ? err.message : '服务器内部错误';
+    res.status(status).json({ error: { code, message: msg } });
   } finally { conn.release(); }
 });
 
@@ -559,7 +568,7 @@ app.post('/api/v1/directories', async (req, res) => {
     res.json({ id: result.insertId, name: name.trim(), type: 'directory', size: 0, parent_id: parent_id || null, status: 'active' });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/directories', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -572,7 +581,7 @@ app.get('/api/v1/files/:id/path', async (req, res) => {
     res.json(rows[0] || { path: '' });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/path', message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   }
 });
 
@@ -586,7 +595,7 @@ app.delete('/api/v1/trash/clear', async (req, res) => {
     res.json({ deleted_count: rows[0]?.[0]?.deleted_count || 0 });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/trash/clear', message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   } finally { conn.release(); }
 });
 
@@ -611,7 +620,7 @@ app.patch('/api/v1/files/:id', async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/files/rename', status: 500, message: err.message });
-    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+    res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
   } finally { conn.release(); }
 });
 
@@ -621,8 +630,8 @@ app.patch('/api/v1/files/:id', async (req, res) => {
 app.get('/api/v1/thumb/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT fn.hash, pb.real_path FROM file_nodes fn JOIN physical_blocks pb ON fn.hash = pb.sha1_hash WHERE fn.id = ?',
-      [req.params.id]
+      'SELECT fn.hash, pb.real_path FROM file_nodes fn JOIN physical_blocks pb ON fn.hash = pb.sha1_hash WHERE fn.id = ? AND fn.owner_id = ?',
+      [req.params.id, req.operatorId]
     );
     if (rows.length === 0 || !fs.existsSync(rows[0].real_path)) {
       return res.status(404).end();
