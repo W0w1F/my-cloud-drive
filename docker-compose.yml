@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cloud-drive-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: cloud-drive-api
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: mysql
+      DB_USER: drive_app
+      DB_PASSWORD: CHANGE_ME_APP_PASSWORD
+      DB_NAME: cloud_drive
+      DB_CONNECTION_LIMIT: 10
+      JWT_SECRET: ${JWT_SECRET:-cloud-drive-prod-secret-change-me}
+      API_PORT: 8081
+      UPLOAD_MAX_SIZE: 10737418240
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8081}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+      - storage_data:/app/storage
+
+volumes:
+  mysql_data:
+  uploads_data:
+  storage_data:

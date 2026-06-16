@@ -286,15 +286,16 @@
 
   async function restoreAll() {
     if (!confirm('恢复回收站中所有文件？')) return;
-    let errors = 0;
-    for (let i = currentFiles.length - 1; i >= 0; i--) {
-      try {
-        await window.api.restoreNode(currentFiles[i].id);
-        currentFiles.splice(i, 1);
-      } catch (err) { errors++; }
+    try {
+      const result = await window.api.restoreAllTrash();
+      currentFiles = [];
+      renderGrid([]);
+      if (result.error_count > 0) {
+        alert('已恢复 ' + result.restored_count + ' 个，' + result.error_count + ' 个失败');
+      }
+    } catch (err) {
+      alert('恢复失败：' + err.message);
     }
-    renderGrid(currentFiles);
-    if (errors > 0) alert(errors + ' 个文件恢复失败');
   }
 
   async function clearTrash() {

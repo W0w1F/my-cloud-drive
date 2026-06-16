@@ -35,7 +35,21 @@ const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const STORAGE_DIR = path.join(__dirname, '..', 'storage', 'blocks');
 const FRONTEND_DIR = path.join(__dirname, '..', '..', 'frontend', 'src');
 
-const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: CONFIG.UPLOAD_MAX_SIZE } });
+// Reject executable and dangerous file types
+const BLOCKED_EXTENSIONS = /\.(exe|sh|bat|cmd|com|msi|dll|so|vbs|ps1|scr|pif|reg|cpl|app|dmg|apk)$/i;
+
+const upload = multer({
+  dest: UPLOAD_DIR,
+  limits: { fileSize: CONFIG.UPLOAD_MAX_SIZE },
+  fileFilter: function(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (BLOCKED_EXTENSIONS.test(ext)) {
+      cb(new Error('不支持上传可执行文件类型：' + ext), false);
+    } else {
+      cb(null, true);
+    }
+  }
+});
 
 // Ensure directories exist
 [UPLOAD_DIR, STORAGE_DIR].forEach(dir => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); });
@@ -129,11 +143,21 @@ app.post('/api/v1/auth/register', authLimiter, async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ error: { code: 'INVALID_INPUT', message: '需要用户名和密码' } });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: '密码长度至少 6 位' } });
+    if (username.length < 2 || username.length > 64) {
+      return res.status(400).json({ error: { code: 'INVALID_USERNAME', message: '用户名长度需在 2-64 位之间' } });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: '密码长度至少 8 位' } });
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: '密码长度不能超过 128 位' } });
+    }
+    // Require at least one letter and one digit
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: '密码必须包含字母和数字' } });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     try {
       const [result] = await pool.query(
@@ -291,7 +315,10 @@ app.post('/api/v1/files/upload', uploadLimiter, upload.single('file'), async (re
 
     var originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
-    // Validate filename — reject empty, path traversal, or overly long names
+    // Sanitize filename — strip path traversal and control characters
+    originalName = originalName.replace(/[/\\:\0]/g, '_').replace(/^\.+/, '');
+
+    // Validate filename — reject empty or overly long names
     if (!originalName || originalName.length > 255) {
       fs.unlinkSync(file.path);
       return res.status(400).json({ error: { code: 'INVALID_NAME', message: '文件名无效或过长' } });
@@ -424,6 +451,30 @@ app.get('/api/v1/files/:id/download', async (req, res) => {
     };
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 
+    // Range support (RFC 7233) — enables resumable downloads and video seeking
+    const range = req.headers['range'];
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : size - 1;
+
+      if (start >= size || end >= size || start > end) {
+        res.setHeader('Content-Range', 'bytes */' + size);
+        return res.status(416).end();
+      }
+
+      const chunkSize = end - start + 1;
+      res.status(206);
+      res.setHeader('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Content-Length', chunkSize);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(name) + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
+      fs.createReadStream(real_path, { start, end }).pipe(res);
+      return;
+    }
+
+    res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(name) + '"; filename*=UTF-8\'\'' + encodeURIComponent(name));
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', size);
@@ -568,6 +619,32 @@ app.get('/api/v1/files/:id/path', async (req, res) => {
 });
 
 // ============================================================================
+// POST /api/v1/trash/restore-all — Batch restore all deleted files
+// ============================================================================
+app.post('/api/v1/trash/restore-all', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id FROM file_nodes WHERE owner_id = ? AND status = 'deleted'`,
+      [req.operatorId]
+    );
+    let restored = 0;
+    let errors = 0;
+    for (const row of rows) {
+      try {
+        await pool.query('CALL sp_restore_node(?, ?)', [row.id, req.operatorId]);
+        restored++;
+      } catch (err) {
+        errors++;
+        console.error('[RESTORE_BATCH_ERROR]', { nodeId: row.id, error: err.message });
+      }
+    }
+    res.json({ restored_count: restored, error_count: errors, total: rows.length });
+  } catch (err) {
+    console.error('[API_ERROR]', { endpoint: '/trash/restore-all', message: err.message });
+    res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
+  }
+});
+
 // 10a. DELETE /api/v1/trash/clear — Permanently clear trash
 // ============================================================================
 app.delete('/api/v1/trash/clear', async (req, res) => {
@@ -638,6 +715,18 @@ app.get('/api/v1/health', async (req, res) => {
 // API 404 for unmatched /api/ routes
 app.use('/api', (req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint not found' } });
+});
+
+// Multer/upload error handler
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: { code: 'FILE_TOO_LARGE', message: '文件大小超过限制' } });
+  }
+  if (err.message && err.message.startsWith('不支持上传')) {
+    return res.status(400).json({ error: { code: 'BLOCKED_TYPE', message: err.message } });
+  }
+  console.error('[UNHANDLED_ERROR]', { message: err.message, stack: err.stack });
+  res.status(500).json({ error: { code: 'INTERNAL', message: '服务器内部错误' } });
 });
 
 // ============================================================================

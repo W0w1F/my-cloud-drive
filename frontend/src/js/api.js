@@ -156,6 +156,10 @@ const api = {
     return apiRequest('/trash');
   },
 
+  restoreAllTrash() {
+    return apiRequest('/trash/restore-all', { method: 'POST' });
+  },
+
   clearTrash() {
     return apiRequest('/trash/clear', { method: 'DELETE' });
   },
