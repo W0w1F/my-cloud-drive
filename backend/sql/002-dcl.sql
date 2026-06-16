@@ -17,7 +17,10 @@ CREATE USER IF NOT EXISTS 'drive_admin'@'localhost'
 -- Application user: minimum privilege for business operations
 -- Constitution IV: SELECT, INSERT, UPDATE + EXECUTE only
 -- NO DELETE, NO DROP, NO ALTER, NO GRANT
+-- Both @'%' and @'localhost' needed: MySQL matches most specific host first
 CREATE USER IF NOT EXISTS 'drive_app'@'%'
+    IDENTIFIED BY 'CHANGE_ME_APP_PASSWORD';
+CREATE USER IF NOT EXISTS 'drive_app'@'localhost'
     IDENTIFIED BY 'CHANGE_ME_APP_PASSWORD';
 
 -- ============================================================================
@@ -38,12 +41,15 @@ GRANT EVENT   ON cloud_drive.* TO 'drive_admin'@'localhost';
 -- Business tables: CRUD via UPDATE (soft-delete), no physical DELETE
 GRANT SELECT, INSERT, UPDATE
     ON cloud_drive.file_nodes TO 'drive_app'@'%';
+GRANT SELECT, INSERT, UPDATE
+    ON cloud_drive.file_nodes TO 'drive_app'@'localhost';
 
 GRANT SELECT, INSERT, UPDATE
     ON cloud_drive.physical_blocks TO 'drive_app'@'%';
+GRANT SELECT, INSERT, UPDATE
+    ON cloud_drive.physical_blocks TO 'drive_app'@'localhost';
 
 -- Users table: read + insert (registration)
--- NOTE: Both @'%' and @'localhost' need INSERT for local connection matching
 GRANT SELECT, INSERT
     ON cloud_drive.users TO 'drive_app'@'%';
 GRANT SELECT, INSERT
@@ -52,13 +58,19 @@ GRANT SELECT, INSERT
 -- Audit logs: INSERT + SELECT only (Constitution V: append-only, immutable)
 GRANT SELECT, INSERT
     ON cloud_drive.audit_logs TO 'drive_app'@'%';
+GRANT SELECT, INSERT
+    ON cloud_drive.audit_logs TO 'drive_app'@'localhost';
 
 REVOKE UPDATE, DELETE
     ON cloud_drive.audit_logs FROM 'drive_app'@'%';
+REVOKE UPDATE, DELETE
+    ON cloud_drive.audit_logs FROM 'drive_app'@'localhost';
 
 -- Stored procedures and functions: EXECUTE only (source code hidden)
 GRANT EXECUTE
     ON cloud_drive.* TO 'drive_app'@'%';
+GRANT EXECUTE
+    ON cloud_drive.* TO 'drive_app'@'localhost';
 
 -- ============================================================================
 -- 4. Verify
