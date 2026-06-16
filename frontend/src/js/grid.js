@@ -448,9 +448,16 @@
   }
 
   // ============================================================================
-  // Render grid
+  // Render grid — progressive rendering for large directories
   // ============================================================================
+  const BATCH_SIZE = 30;
+  let pendingFiles = [];
+  let renderObserver = null;
+
   function renderGrid(files) {
+    // Cleanup previous observer
+    if (renderObserver) renderObserver.disconnect();
+
     gridContainer.innerHTML = '';
 
     if (files.length === 0) {
@@ -458,23 +465,53 @@
       msg.style.cssText = 'grid-column:1/-1;text-align:center;padding:48px;color:var(--color-text-muted);font-family:var(--font-display);';
       msg.textContent = inTrash ? '回收站为空' : '此目录为空';
       gridContainer.appendChild(msg);
-      // deleteBtn hidden
       return;
     }
 
-    files.forEach(function(file) {
-      gridContainer.appendChild(renderFileCard(file));
-    });
-
-    if (files.length > 40) {
-      gridContainer.style.contentVisibility = '';
-      gridContainer.style.containIntrinsicSize = '';
+    // Progressive rendering: show first batch immediately, rest on scroll
+    if (files.length > BATCH_SIZE) {
+      pendingFiles = files.slice(BATCH_SIZE);
+      renderBatch(files.slice(0, BATCH_SIZE));
+      addLoadMoreSentinel();
     } else {
-      gridContainer.style.contentVisibility = '';
-      gridContainer.style.containIntrinsicSize = '';
+      files.forEach(function(file, idx) {
+        const card = renderFileCard(file);
+        card.classList.add('card-enter');
+        card.style.setProperty('--card-index', idx);
+        gridContainer.appendChild(card);
+      });
     }
+  }
 
-    // deleteBtn hidden
+  function renderBatch(batch) {
+    batch.forEach(function(file, idx) {
+      const card = renderFileCard(file);
+      card.classList.add('card-enter');
+      card.style.setProperty('--card-index', (gridContainer.children.length % BATCH_SIZE));
+      gridContainer.appendChild(card);
+    });
+  }
+
+  function addLoadMoreSentinel() {
+    if (pendingFiles.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.className = 'load-more-sentinel';
+    sentinel.style.cssText = 'grid-column:1/-1;height:1px;';
+
+    renderObserver = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting && pendingFiles.length > 0) {
+        const batch = pendingFiles.splice(0, BATCH_SIZE);
+        sentinel.remove();
+        renderBatch(batch);
+        if (pendingFiles.length > 0) {
+          gridContainer.appendChild(sentinel);
+        }
+      }
+    }, { rootMargin: '200px' });
+
+    gridContainer.appendChild(sentinel);
+    renderObserver.observe(sentinel);
   }
 
   // ============================================================================

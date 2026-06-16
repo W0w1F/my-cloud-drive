@@ -114,26 +114,6 @@
   <script src="js/tree.js" defer></script>
   <script src="js/grid.js" defer></script>
   <script src="js/upload.js" defer></script>
-
-  <!-- Auth guard + header setup -->
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (!window.Auth || !window.Auth.requireAuth()) return;
-
-      var user = window.Auth.getUser();
-      if (user) {
-        document.getElementById('header-user').textContent = user.username;
-      }
-
-      document.getElementById('btn-logout').addEventListener('click', function() {
-        window.Auth.logout();
-      });
-    });
-  </script>
-
-  <!-- Splash: click to skip -->
-  <script>
-    document.getElementById('splash').onclick = function() { this.remove(); };
-  </script>
+  <script src="js/init.js" defer></script>
 </body>
 </html>

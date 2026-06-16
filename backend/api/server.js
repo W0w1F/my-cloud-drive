@@ -122,7 +122,7 @@ const uploadLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: '上传请求过于频繁，请稍后再试' } },
 });
 
-const CSP_HEADER = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;";
+const CSP_HEADER = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;";
 
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', CSP_HEADER);

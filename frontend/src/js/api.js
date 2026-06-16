@@ -111,7 +111,7 @@ const api = {
   },
 
   // File list (grid)
-  getFiles(parentId, signal, offset = 0, limit = 50) {
+  getFiles(parentId, signal, offset = 0, limit = 500) {
     const params = new URLSearchParams({ offset, limit });
     if (parentId != null) params.set('parent_id', parentId);
     return apiRequest(`/files?${params}`, signal ? { signal } : {});
