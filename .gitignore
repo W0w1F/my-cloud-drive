@@ -4,3 +4,5 @@ nul
 .pi/
 .specify/
 .agents/
+backend/storage/blocks/
+backend/uploads/
