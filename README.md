@@ -2,6 +2,19 @@
 
 基于 Huashu Design 设计哲学的云盘文件管理系统，实现虚拟文件层与物理存储层完全解耦，支持 SHA-1 去重秒传、无限层级目录树。
 
+## 当前部署
+
+> 以下为示例部署信息，使用时请替换为自己的服务器地址。
+
+| 角色 | 地址 |
+|------|------|
+| 🖥️ 服务器（后端 + 数据库） | `<服务器IP>` (Ubuntu 22.04 VM) |
+| 💻 客户端（浏览器） | 任意内网机器访问 `http://<服务器IP>:8081` |
+
+**配置步骤**：
+1. 修改 `.env` 中的 `CORS_ORIGIN` 为你的服务器 IP
+2. 启动服务后，浏览器访问 `http://<服务器IP>:8081`
+
 ## 功能
 
 ### 认证与安全
@@ -111,26 +124,95 @@
 
 ```bash
 docker-compose up -d
-# 打开 http://localhost:8081
+# 打开 http://<服务器IP>:8081
 ```
 
-### 手动启动
+### 手动启动（Ubuntu 22.04）
 
 ```bash
-# 1. 环境配置
-cp .env.example .env
-# 编辑 .env 填入数据库配置
+# 1. 安装依赖
+sudo apt update
+sudo apt install -y mysql-server nodejs npm
 
-# 2. 数据库初始化（按顺序执行 9 个 SQL 文件）
-mysql -u root -p < backend/sql/000-init.sql
-mysql -u root -p cloud_drive < backend/sql/001-schema.sql
-# ... 依次执行 002 ~ 009
+# 2. 安全初始化 MySQL
+sudo mysql_secure_installation
+# 设置 root 密码，权限策略选 LOW，其余全 Y
+
+# 3. 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入数据库配置，并将 CORS_ORIGIN 改为服务器地址
+# - dev:   CORS_ORIGIN=http://localhost:8081
+# - 部署:  CORS_ORIGIN=http://<你的IP>:8081
+
+# 4. 数据库初始化（按顺序执行全部 SQL 文件）
+for f in backend/sql/0*.sql; do
+  sudo mysql -u root -proot < "$f" 2>/dev/null
+done
+
+# 5. 安装依赖并启动 API
+cd backend/api && npm install && node server.js
+
+# 6. 浏览器访问
+# http://<服务器IP>:8081
+```
+
+> ⚠️ **注意**：MySQL 8.0 禁止 GRANT 隐式创建用户，`002-dcl.sql` 已为 `drive_app@%` 和 `drive_app@localhost` 明确执行 `CREATE USER`。
+
+### 手动启动（Windows）
+
+```bash
+# 1. 确保 MySQL 8.0 服务运行中
+
+# 2. 数据库初始化
+mysql -u root -proot < backend/sql/000-init.sql
+for f in backend/sql/001-schema.sql backend/sql/002-dcl.sql backend/sql/0*.sql; do
+  mysql -u root -proot < "$f"
+done
 
 # 3. 启动 API
 cd backend/api && npm install && node server.js
 
 # 4. 浏览器
 open http://localhost:8081
+```
+
+## 文件存储结构
+
+上传的物理文件按 SHA-1 哈希值存储，实现虚拟层与物理层解耦：
+
+```
+backend/
+├── uploads/              ← 临时上传目录（multer，处理后自动删除）
+└── storage/blocks/       ← 最终物理存储（按哈希分两层目录）
+    └── ab/               ← SHA-1 前 2 位
+        └── cd/           ← SHA-1 第 3–4 位
+            └── abcde...  ← 完整 40 位 SHA-1 哈希（无扩展名）
+```
+
+- 同一文件即使上传到不同目录，物理上只存一份（`ref_count` 计数）
+- 虚拟层的文件名、目录结构全部在 MySQL `file_nodes` 表中
+
+## 已知问题 / 排错
+
+### MySQL 8.0 GRANT 权限错误
+
+```
+ERROR 1410 (42000): You are not allowed to create a user with GRANT
+```
+
+**原因**：MySQL 8.0+ 不允许 `GRANT` 隐式创建用户，必须先 `CREATE USER`。
+
+**解决**：确保 `002-dcl.sql` 中为 `'drive_app'@'%'` 和 `'drive_app'@'localhost'` 都执行了 `CREATE USER IF NOT EXISTS ... IDENTIFIED BY ...`，`GRANT` 才能成功。
+
+### `execute command denied to user 'drive_app'@'%'`
+
+**原因**：DCL 脚本在中途报错中断后，`drive_app` 未获得存储过程的 `EXECUTE` 权限。
+
+**解决**：
+```sql
+GRANT EXECUTE ON cloud_drive.* TO 'drive_app'@'%';
+GRANT EXECUTE ON cloud_drive.* TO 'drive_app'@'localhost';
+FLUSH PRIVILEGES;
 ```
 
 ## 技术栈
