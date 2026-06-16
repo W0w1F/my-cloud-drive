@@ -43,8 +43,11 @@ GRANT SELECT, INSERT, UPDATE
     ON cloud_drive.physical_blocks TO 'drive_app'@'%';
 
 -- Users table: read + insert (registration)
+-- NOTE: Both @'%' and @'localhost' need INSERT for local connection matching
 GRANT SELECT, INSERT
     ON cloud_drive.users TO 'drive_app'@'%';
+GRANT SELECT, INSERT
+    ON cloud_drive.users TO 'drive_app'@'localhost';
 
 -- Audit logs: INSERT + SELECT only (Constitution V: append-only, immutable)
 GRANT SELECT, INSERT
