@@ -12,7 +12,7 @@
 | 💻 客户端（浏览器） | 任意内网机器访问 `http://<服务器IP>:8081` |
 
 **配置步骤**：
-1. 修改 `.env` 中的 `CORS_ORIGIN` 为你的服务器 IP
+1. 修改 `.env` 中的 `CORS_ORIGIN` 添加服务器 IP（详见下方 [CORS 白名单](#cors-白名单)）
 2. 启动服务后，浏览器访问 `http://<服务器IP>:8081`
 
 ## 功能
@@ -117,6 +117,35 @@
 | `audit_logs` | 审计日志 (不可篡改) | operation_type, old_value, new_value (JSON) |
 
 **权限模型**：`drive_app`（最小权限：仅 SELECT/INSERT/UPDATE/EXECUTE）｜ `drive_admin`（迁移维护）
+
+## 网络配置
+
+### CORS 白名单
+
+服务器通过 CORS 控制允许访问的前端地址。修改 `.env` 中的 `CORS_ORIGIN`：
+
+```env
+# 单机开发（默认）
+CORS_ORIGIN=http://localhost:8081
+
+# 服务器部署：多个地址用逗号分隔
+CORS_ORIGIN=http://localhost:8081,http://192.168.1.100:8081,http://10.0.0.5:8081
+
+# 通配端口：所有来源都允许
+CORS_ORIGIN=*
+```
+
+> 修改 `.env` 后需重启 API 生效（`Ctrl+C` 停掉后重新 `node server.js`）。
+
+### CORS 错误排查
+
+其他设备访问时浏览器开发者工具控制台报 `CORS blocked` 时，将它的 IP 加入白名单即可。
+
+```
+[UNHANDLED_ERROR] CORS blocked: http://10.160.154.33:8081
+```
+
+→ 在 `.env` 中添加 `http://10.160.154.33:8081` 到 `CORS_ORIGIN` 并重启。
 
 ## 快速启动
 

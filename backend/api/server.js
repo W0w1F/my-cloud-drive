@@ -645,13 +645,47 @@ app.post('/api/v1/trash/restore-all', async (req, res) => {
   }
 });
 
-// 10a. DELETE /api/v1/trash/clear — Permanently clear trash
+// 10a. DELETE /api/v1/trash/clear — Permanently clear trash + cleanup orphan blocks
 // ============================================================================
 app.delete('/api/v1/trash/clear', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.query('CALL sp_clear_trash(?)', [req.operatorId]);
-    res.json({ deleted_count: rows[0]?.[0]?.deleted_count || 0 });
+    const deletedCount = rows[0]?.[0]?.deleted_count || 0;
+
+    // Find orphan physical blocks (ref_count = 0) and delete disk files
+    const [orphans] = await conn.query(
+      'SELECT sha1_hash, real_path FROM physical_blocks WHERE ref_count = 0'
+    );
+
+    let orphanCount = 0;
+    for (const block of orphans) {
+      if (block.real_path && fs.existsSync(block.real_path)) {
+        try {
+          fs.unlinkSync(block.real_path);
+          orphanCount++;
+
+          // Clean up empty parent directories (hash/ab/cd/ → hash/ → remove)
+          const dir2 = path.dirname(block.real_path);
+          const dir1 = path.dirname(dir2);
+          try { fs.rmdirSync(dir2); } catch (e) { /* not empty */ }
+          try { fs.rmdirSync(dir1); } catch (e) { /* not empty */ }
+        } catch (e) {
+          console.error('[CLEANUP_ERROR]', { hash: block.sha1_hash, path: block.real_path, error: e.message });
+        }
+      }
+    }
+
+    // Remove orphan physical_blocks records
+    const [delResult] = await conn.query('DELETE FROM physical_blocks WHERE ref_count = 0');
+
+    res.json({
+      deleted_count: deletedCount,
+      storage_freed: orphanCount,
+      message: orphanCount > 0
+        ? '已清理 ' + orphanCount + ' 个物理文件，释放存储空间'
+        : '回收站已清空'
+    });
   } catch (err) {
     console.error('[API_ERROR]', { endpoint: '/trash/clear', message: err.message });
     res.status(500).json({ error: { code: 'INTERNAL', message: err.message } });
